@@ -1,4 +1,4 @@
-export type FileType = "html" | "css" | "js" | "folder"
+export type FileType = "html" | "css" | "js" | "ts" | "c" | "py" | "lua" | "folder"
 
 export interface FileItem {
   id: number

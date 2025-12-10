@@ -6,9 +6,8 @@ import { Inter } from "next/font/google"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Code Editor",
-  description: "A responsive code editor that works on all devices",
-    generator: 'v0.dev'
+  title: "Code Editor - Online IDE",
+  description: "A modern, responsive online code editor supporting HTML, CSS, JavaScript, TypeScript, C, and Python",
 }
 
 export default function RootLayout({

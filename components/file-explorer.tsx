@@ -68,7 +68,7 @@ export default function FileExplorer({
         name += ".html"
       }
       const extension = name.split(".").pop()?.toLowerCase()
-      const validTypes = ["html", "css", "js"]
+      const validTypes = ["html", "css", "js", "ts", "c", "py", "lua"]
       const type = validTypes.includes(extension) ? extension : "html"
 
       onCreateFile(name, type, newItemParent)
@@ -308,7 +308,15 @@ export default function FileExplorer({
                               ? "text-blue-500"
                               : item.type === "js"
                                 ? "text-yellow-500"
-                                : "text-gray-500"
+                                : item.type === "ts"
+                                  ? "text-blue-600"
+                                  : item.type === "py"
+                                    ? "text-green-500"
+                                    : item.type === "lua"
+                                      ? "text-purple-500"
+                                      : item.type === "c"
+                                        ? "text-indigo-500"
+                                        : "text-gray-500"
                         }`}
                       />
                       <span
