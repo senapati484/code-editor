@@ -33,7 +33,7 @@ const defaultSettings: EditorSettings = {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light")
+  const [theme, setTheme] = useState<Theme>("dark")
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(defaultSettings)
   const [isMobileView, setIsMobileView] = useState(false)
 

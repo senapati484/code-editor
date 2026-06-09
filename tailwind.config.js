@@ -88,4 +88,5 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+} // Cache invalidate touch
+
