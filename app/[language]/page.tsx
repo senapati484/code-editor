@@ -269,9 +269,7 @@ async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
   window.prompt = (msg) => {
     if (msg) outputs.push(String(msg));  // Show prompt text in output
     if (stdinIndex < stdinLines.length) {
-      const val = stdinLines[stdinIndex++];
-      outputs.push(val);   // Echo the input value
-      return val;
+      return stdinLines[stdinIndex++];
     }
     // Signal that we need more input — throw to stop JS execution cleanly
     const e = new Error(EOF_SIG);
@@ -421,6 +419,49 @@ async function runServer(code: string, langKey: string, stdin: string = ""): Pro
 
   return parts.join("\n\n");
 }
+// ─── Input detection helpers ────────────────────────────────────────────────
+const hasInputCalls = (code: string, langKey: string): boolean => {
+  const codeClean = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ""); // strip comments
+  if (langKey === "python") {
+    return /\binput\s*\(/.test(codeClean);
+  }
+  if (langKey === "javascript" || langKey === "typescript") {
+    return /\bprompt\s*\(|\breadline\s*\(/.test(codeClean);
+  }
+  if (langKey === "c" || langKey === "cpp") {
+    return /\bscanf\s*\(|std::cin\b|\bcin\b|\bgetline\s*\(|\bgetchar\s*\(|\bfgets\s*\(/.test(codeClean);
+  }
+  if (langKey === "java") {
+    return /\bScanner\b|\.nextLine\s*\(|\.next\s*\(|\.read\s*\(|\.readLine\s*\(/.test(codeClean);
+  }
+  if (langKey === "rust") {
+    return /\.read_line\b|\bstdin\s*\(/.test(codeClean);
+  }
+  if (langKey === "go") {
+    return /\bScan\b|\bScanf\b|\bScanln\b/.test(codeClean);
+  }
+  if (langKey === "ruby") {
+    return /\bgets\b|\breadline\b/.test(codeClean);
+  }
+  if (langKey === "php") {
+    return /\breadline\b|\bfgets\s*\(\s*STDIN/.test(codeClean);
+  }
+  return false;
+};
+
+const endsWithPrompt = (output: string): boolean => {
+  if (!output) return false;
+  // A prompt usually ends with a colon, question mark, or arrow/greater-than, possibly followed by spaces, and does NOT end with a newline
+  const trimmed = output.trimEnd();
+  if (trimmed.length === 0) return false;
+  
+  // If it ends with a newline, it's probably not waiting for input inline
+  if (output.endsWith("\n")) return false;
+  
+  // Check if it ends with common prompt characters: ':', '?', '>', '$'
+  const lastChar = trimmed[trimmed.length - 1];
+  return lastChar === ":" || lastChar === "?" || lastChar === ">" || lastChar === "$";
+};
 
 // ─── Playground UI ────────────────────────────────────────────────────────
 
@@ -441,6 +482,7 @@ function PlaygroundContent({ language }: { language: string }) {
   const [interactiveMode, setInteractiveMode]   = useState(false);
   const [interactiveInput, setInteractiveInput] = useState("");
   const [collectedInputs, setCollectedInputs]   = useState<string[]>([]);
+  const [lastRawOutput, setLastRawOutput]       = useState("");
   const interactiveInputRef = useRef<HTMLInputElement>(null);
   const outputEndRef        = useRef<HTMLDivElement>(null);
 
@@ -468,6 +510,7 @@ function PlaygroundContent({ language }: { language: string }) {
     setInteractiveMode(false);
     setInteractiveInput("");
     setCollectedInputs([]);
+    setLastRawOutput("");
   }, [langKey]); // eslint-disable-line
 
   const saveCode = (c: string) => {
@@ -484,6 +527,7 @@ function PlaygroundContent({ language }: { language: string }) {
     setInteractiveMode(false);
     setInteractiveInput("");
     setCollectedInputs([]);
+    setLastRawOutput("");
   };
 
   const handleDownload = () => {
@@ -518,23 +562,41 @@ function PlaygroundContent({ language }: { language: string }) {
         result = await runServer(code, langKey, stdinStr);
       }
 
-      if (result.includes(NEEDS_INPUT_MARKER)) {
-        // Program paused waiting for input — show output so far + inline input box
-        const outputSoFar = result.split(NEEDS_INPUT_MARKER)[0];
-        setOutput(outputSoFar);
+      // Split client-side runtime needs-input marker
+      const hasMarker = result.includes(NEEDS_INPUT_MARKER);
+      const rawResult = hasMarker ? result.split(NEEDS_INPUT_MARKER)[0] : result;
+
+      // Reconstruct the output with prefix-matching to keep user's echoed inputs
+      if (inputs.length === 0) {
+        setOutput(rawResult);
+        setLastRawOutput(rawResult);
+      } else {
+        if (rawResult.startsWith(lastRawOutput)) {
+          const diff = rawResult.substring(lastRawOutput.length);
+          setOutput(prev => prev + diff);
+          setLastRawOutput(rawResult);
+        } else {
+          setOutput(rawResult);
+          setLastRawOutput(rawResult);
+        }
+      }
+
+      // Determine if interactiveMode should be active
+      const isClientSideInput = hasMarker;
+      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(code, langKey) && endsWithPrompt(rawResult);
+
+      if (isClientSideInput || isServerSideInput) {
         setInteractiveMode(true);
-        // status stays "running" — we're mid-execution
       } else {
         setInteractiveMode(false);
-        setOutput(result);
-        setStatus(result.toLowerCase().includes("error") ? "error" : "success");
+        setStatus(rawResult.toLowerCase().includes("error") ? "error" : "success");
       }
     } catch (err: any) {
       setInteractiveMode(false);
       setOutput(`Error: ${err.message || String(err)}`);
       setStatus("error");
     }
-  }, [code, langKey]);
+  }, [code, langKey, lastRawOutput]);
 
   const handleRun = useCallback(async () => {
     if (!code.trim() || status === "running") return;
@@ -542,6 +604,7 @@ function PlaygroundContent({ language }: { language: string }) {
     setInteractiveMode(false);
     setInteractiveInput("");
     setCollectedInputs([]);
+    setLastRawOutput("");
     if (langKey === "python") {
       setOutput("Loading Python runtime (first run may take ~30s)...\n");
     } else if (langKey === "typescript") {
