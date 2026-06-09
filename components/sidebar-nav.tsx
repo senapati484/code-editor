@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSettings } from "@/contexts/settings-context";
+import O2Logo from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -92,9 +93,9 @@ export default function SidebarNav() {
           {/* Logo */}
           <Link 
             href="/" 
-            className="group relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-bold text-lg shadow-md hover:scale-105 transition-transform duration-205"
+            className="group relative flex items-center justify-center w-10 h-10 rounded-xl bg-transparent hover:scale-105 transition-transform duration-205"
           >
-            C
+            <O2Logo className="w-8 h-8" />
             <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 rounded-full animate-pulse ${
               isDark ? "border-[#161b22]" : "border-slate-50"
             }`} />

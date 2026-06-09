@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import SidebarNav from "@/components/sidebar-nav";
+import O2Logo from "@/components/logo";
 import { useSettings } from "@/contexts/settings-context";
 import { Card } from "@/components/ui/card";
 import {
@@ -128,10 +129,15 @@ export default function DashboardPage() {
 
       <main className="flex-1 flex flex-col h-screen overflow-y-auto p-6 md:p-8 max-w-5xl mx-auto w-full">
         <header className="mb-8 border-b border-border pb-6">
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Code Editor Playgrounds</h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
-            Select a template sandbox to start writing and executing code instantly.
-          </p>
+          <div className="flex items-center gap-3">
+            <O2Logo className="w-10 h-10" />
+            <div>
+              <h1 className="text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">O2 Playgrounds</h1>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Select a template sandbox to start writing and executing code instantly.
+              </p>
+            </div>
+          </div>
         </header>
 
         <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

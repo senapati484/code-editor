@@ -17,7 +17,7 @@ const LANGUAGE_CONFIG: Record<string, LangConfig> = {
   php:  { pistonLang: "php",    pistonVersion: "8.0.2",  filename: "main.php",  wandboxCompiler: "php-8.3.12" },
 };
 
-async function runWithPiston(code: string, lang: string) {
+async function runWithPiston(code: string, lang: string, stdin: string = "") {
   const cfg = LANGUAGE_CONFIG[lang];
   const res = await fetch("https://emkc.org/api/v2/piston/execute", {
     method: "POST",
@@ -26,7 +26,7 @@ async function runWithPiston(code: string, lang: string) {
       language: cfg.pistonLang,
       version: cfg.pistonVersion,
       files: [{ name: cfg.filename, content: code }],
-      stdin: "",
+      stdin: stdin,
     }),
     signal: AbortSignal.timeout(20000),
   });
@@ -46,7 +46,7 @@ async function runWithPiston(code: string, lang: string) {
   };
 }
 
-async function runWithWandbox(code: string, lang: string) {
+async function runWithWandbox(code: string, lang: string, stdin: string = "") {
   const cfg = LANGUAGE_CONFIG[lang];
   const res = await fetch("https://wandbox.org/api/compile.json", {
     method: "POST",
@@ -54,7 +54,7 @@ async function runWithWandbox(code: string, lang: string) {
       "Content-Type": "application/json",
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     },
-    body: JSON.stringify({ code, compiler: cfg.wandboxCompiler }),
+    body: JSON.stringify({ code, compiler: cfg.wandboxCompiler, stdin }),
     signal: AbortSignal.timeout(25000),
   });
 
@@ -72,7 +72,7 @@ async function runWithWandbox(code: string, lang: string) {
 
 export async function POST(request: Request) {
   try {
-    const { code, language } = await request.json();
+    const { code, language, stdin = "" } = await request.json();
 
     if (!code?.trim()) {
       return NextResponse.json({ error: "Code is required" }, { status: 400 });
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     // Try Piston first — it's faster and more reliable
     let pistonError = "";
     try {
-      const result = await runWithPiston(processedCode, lang);
+      const result = await runWithPiston(processedCode, lang, stdin);
       return NextResponse.json(result);
     } catch (err: any) {
       pistonError = err.message;
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
     // Fallback to Wandbox
     try {
-      const result = await runWithWandbox(processedCode, lang);
+      const result = await runWithWandbox(processedCode, lang, stdin);
       return NextResponse.json(result);
     } catch (err: any) {
       throw new Error(

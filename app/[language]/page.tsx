@@ -18,6 +18,9 @@ import {
   Trash2,
   Copy,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Keyboard,
 } from "lucide-react";
 
 // ─── Language configs ──────────────────────────────────────────────────────
@@ -237,8 +240,10 @@ echo "5! = " . factorial(5) . "\\n";`,
 
 // ─── JS execution in async-safe sandbox ───────────────────────────────────
 
-async function runJSAsync(code: string): Promise<string> {
+async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
   const outputs: string[] = [];
+  const stdinLines = stdin.split("\n");
+  let stdinIndex = 0;
 
   const capture = (type: string) => (...args: any[]) => {
     const line = args
@@ -251,11 +256,19 @@ async function runJSAsync(code: string): Promise<string> {
   const origError = console.error;
   const origWarn  = console.warn;
   const origInfo  = console.info;
+  const origPrompt = window.prompt;
 
   console.log   = capture("log");
   console.error = capture("error");
   console.warn  = capture("warn");
   console.info  = capture("info");
+
+  window.prompt = (msg) => {
+    outputs.push(`[Prompt: ${msg || ""}]`);
+    const val = stdinIndex < stdinLines.length ? stdinLines[stdinIndex++] : "";
+    outputs.push(val);
+    return val;
+  };
 
   try {
     // Wrap in async IIFE so top-level await works
@@ -270,6 +283,7 @@ async function runJSAsync(code: string): Promise<string> {
     console.error = origError;
     console.warn  = origWarn;
     console.info  = origInfo;
+    window.prompt = origPrompt;
   }
 }
 
@@ -292,7 +306,7 @@ async function loadTS(): Promise<any> {
   return tsLoading;
 }
 
-async function runTypeScript(code: string): Promise<string> {
+async function runTypeScript(code: string, stdin: string = ""): Promise<string> {
   const ts = await loadTS();
   const js = ts.transpileModule(code, {
     compilerOptions: {
@@ -301,7 +315,7 @@ async function runTypeScript(code: string): Promise<string> {
       strict: false,
     },
   }).outputText;
-  return runJSAsync(js);
+  return runJSAsync(js, stdin);
 }
 
 // ─── Python via Pyodide ────────────────────────────────────────────────────
@@ -333,33 +347,60 @@ async function loadPyodide(): Promise<any> {
   return pyodideLoading;
 }
 
-async function runPython(code: string): Promise<string> {
+async function runPython(code: string, stdin: string = ""): Promise<string> {
   const py = await loadPyodide();
-  py.runPython(`
-import sys
-from io import StringIO
-sys.stdout = StringIO()
-sys.stderr = StringIO()
-  `);
+
+  // Safely inject stdin via globals - avoids string escaping issues in Python source
+  py.globals.set("_o2_stdin_data", stdin);
+
+  // Simple, safe Python setup - no special chars inside string literals
+  py.runPython([
+    "import sys, builtins",
+    "from io import StringIO",
+    "sys.stdout = StringIO()",
+    "sys.stderr = StringIO()",
+    "sys.stdin  = StringIO(_o2_stdin_data)",
+    "def custom_input(prompt=''):",
+    "    if prompt: sys.stdout.write(str(prompt))",
+    "    line = sys.stdin.readline()",
+    "    if not line: raise EOFError('__NEEDS_STDIN__')",
+    "    return line.rstrip('\\r\\n')",
+    "builtins.input = custom_input",
+  ].join("\n"));
+
   try {
     py.runPython(code);
   } catch (e: any) {
-    const stderr = py.runPython("sys.stderr.getvalue()");
-    return (stderr || e.message || String(e)).trim();
+    const partialOut: string = py.runPython("sys.stdout.getvalue()") || "";
+    const errMsg: string     = e.message || String(e);
+
+    if (errMsg.includes("__NEEDS_STDIN__")) {
+      const prefix = partialOut ? partialOut.trimEnd() + "\n\n" : "";
+      return (
+        prefix +
+        "Input Required\n" +
+        "Your code called input() but no input was provided.\n" +
+        "Open the Custom Input (stdin) panel below, type your values (one per line), then Run again."
+      );
+    }
+
+    const errOut: string = py.runPython("sys.stderr.getvalue()") || "";
+    return [partialOut.trimEnd(), errOut.trimEnd() || errMsg].filter(Boolean).join("\n");
   }
-  const out = py.runPython("sys.stdout.getvalue()");
-  const err = py.runPython("sys.stderr.getvalue()");
-  const combined = [err && `[stderr]\n${err}`, out].filter(Boolean).join("\n");
-  return combined || "Code executed successfully. (No output)";
+
+  const out: string = py.runPython("sys.stdout.getvalue()") || "";
+  const err: string = py.runPython("sys.stderr.getvalue()") || "";
+  const combined    = [err && `[stderr]\n${err.trimEnd()}`, out].filter(Boolean).join("\n");
+  return combined.trim() || "Code executed successfully. (No output)";
 }
 
 // ─── Server-side compilation ───────────────────────────────────────────────
 
-async function runServer(code: string, langKey: string): Promise<string> {
+async function runServer(code: string, langKey: string, stdin: string = ""): Promise<string> {
   const res = await fetch("/api/compile", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, language: langKey }),
+    body: JSON.stringify({ code, language: langKey, stdin }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -391,6 +432,8 @@ function PlaygroundContent({ language }: { language: string }) {
   const [output, setOutput]           = useState("");
   const [status, setStatus]           = useState<StatusType>("idle");
   const [copied, setCopied]           = useState(false);
+  const [stdin, setStdin]             = useState("");
+  const [stdinOpen, setStdinOpen]     = useState(true);
 
   const isDark = theme === "dark";
 
@@ -401,6 +444,8 @@ function PlaygroundContent({ language }: { language: string }) {
     setCode(saved ?? langConfig.template);
     setOutput("");
     setStatus("idle");
+    setStdin("");
+    setStdinOpen(false);
   }, [langKey]); // eslint-disable-line
 
   const saveCode = (c: string) => {
@@ -414,6 +459,7 @@ function PlaygroundContent({ language }: { language: string }) {
     saveCode(langConfig.template);
     setOutput("");
     setStatus("idle");
+    setStdin("");
   };
 
   const handleDownload = () => {
@@ -441,24 +487,32 @@ function PlaygroundContent({ language }: { language: string }) {
     try {
       let result = "";
       if (langKey === "javascript") {
-        result = await runJSAsync(code);
+        result = await runJSAsync(code, stdin);
       } else if (langKey === "typescript") {
         setOutput("Compiling TypeScript...\n");
-        result = await runTypeScript(code);
+        result = await runTypeScript(code, stdin);
       } else if (langKey === "python") {
         setOutput("Loading Python runtime (first run may take ~30 seconds)...\n");
-        result = await runPython(code);
+        result = await runPython(code, stdin);
       } else {
         setOutput("Connecting to compiler server...\n");
-        result = await runServer(code, langKey);
+        result = await runServer(code, langKey, stdin);
       }
       setOutput(result);
-      setStatus(result.toLowerCase().includes("error") ? "error" : "success");
+      // Auto-open stdin panel if result indicates missing input
+      const needsInput = result.includes("__NEEDS_STDIN__") || result.includes("Custom Input (stdin)") || 
+        result.includes("EOFError") || result.includes("EOF");
+      if (needsInput) {
+        setStdinOpen(true);
+        setStatus("error");
+      } else {
+        setStatus(result.toLowerCase().includes("error") ? "error" : "success");
+      }
     } catch (err: any) {
       setOutput(`Error: ${err.message || String(err)}`);
       setStatus("error");
     }
-  }, [code, langKey, status]);
+  }, [code, langKey, status, stdin]);
 
   // Keyboard shortcut: Ctrl+Enter to run
   useEffect(() => {
@@ -627,6 +681,21 @@ function PlaygroundContent({ language }: { language: string }) {
               </div>
               <div className="flex items-center gap-1">
                 <button
+                  onClick={() => setStdinOpen(!stdinOpen)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors text-xs font-semibold ${
+                    stdinOpen
+                      ? isDark ? "bg-slate-850 text-indigo-400" : "bg-slate-200 text-indigo-600"
+                      : isDark ? "text-slate-500 hover:text-slate-300 hover:bg-slate-800" : "text-slate-450 hover:text-slate-650 hover:bg-slate-100"
+                  }`}
+                  title="Configure Custom Input (stdin)"
+                >
+                  <Keyboard className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Input</span>
+                  {stdin.trim() && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  )}
+                </button>
+                <button
                   onClick={handleCopyOutput}
                   disabled={!output || status === "running"}
                   className={`p-1.5 rounded-md transition-colors disabled:opacity-40 ${
@@ -670,6 +739,81 @@ function PlaygroundContent({ language }: { language: string }) {
                 <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
                   <Terminal className="h-10 w-10" />
                   <p className="text-sm">Press <kbd className="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded text-xs font-sans">Ctrl+Enter</kbd> to run</p>
+                </div>
+              )}
+            </div>
+
+            {/* Collapsible Stdin Panel */}
+            <div className={`border-t transition-all duration-200 shrink-0 ${
+              isDark ? "border-slate-800 bg-[#161b22]" : "border-slate-200 bg-slate-50"
+            }`}>
+              <button
+                onClick={() => setStdinOpen(!stdinOpen)}
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors ${
+                  isDark ? "text-slate-300 hover:text-white" : "text-slate-700 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Keyboard className="h-3.5 w-3.5" />
+                  <span>Custom Input (stdin)</span>
+                  {stdin.trim() ? (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                      isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                    }`}>
+                      {stdin.split('\n').filter(Boolean).length} line{stdin.split('\n').filter(Boolean).length !== 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                      isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600"
+                    }`}>
+                      empty
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-normal ${
+                    isDark ? "text-slate-500" : "text-slate-400"
+                  }`}>type input before clicking Run</span>
+                  {stdinOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                </div>
+              </button>
+
+              {stdinOpen && (
+                <div className="px-4 pb-4 flex flex-col gap-2">
+                  <p className={`text-[11px] ${
+                    isDark ? "text-slate-500" : "text-slate-400"
+                  }`}>
+                    If your code calls <code className={`px-1 rounded ${
+                      isDark ? "bg-slate-800 text-amber-400" : "bg-slate-100 text-amber-700"
+                    }`}>input()</code>, <code className={`px-1 rounded ${
+                      isDark ? "bg-slate-800 text-amber-400" : "bg-slate-100 text-amber-700"
+                    }`}>scanf()</code>, or <code className={`px-1 rounded ${
+                      isDark ? "bg-slate-800 text-amber-400" : "bg-slate-100 text-amber-700"
+                    }`}>readline()</code> — type the values below <strong>(one per line)</strong>, then click Run.
+                  </p>
+                  <textarea
+                    id="stdin-textarea"
+                    value={stdin}
+                    onChange={(e) => setStdin(e.target.value)}
+                    placeholder={`e.g.\nAlice\n25\n100 200`}
+                    rows={4}
+                    spellCheck={false}
+                    className={`w-full p-3 text-xs font-mono rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-y ${
+                      isDark
+                        ? "bg-[#0d1117] border-slate-700 text-slate-200 placeholder-slate-600"
+                        : "bg-white border-slate-300 text-slate-800 placeholder-slate-400"
+                    }`}
+                  />
+                  {stdin.trim() && (
+                    <button
+                      onClick={() => setStdin('')}
+                      className={`self-end text-[10px] font-medium transition-colors ${
+                        isDark ? "text-slate-500 hover:text-red-400" : "text-slate-400 hover:text-red-500"
+                      }`}
+                    >
+                      Clear input
+                    </button>
+                  )}
                 </div>
               )}
             </div>
