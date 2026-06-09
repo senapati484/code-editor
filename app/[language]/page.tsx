@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState, useEffect, useCallback } from "react";
+import React, { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SidebarNav from "@/components/sidebar-nav";
@@ -18,9 +18,6 @@ import {
   Trash2,
   Copy,
   Check,
-  ChevronDown,
-  ChevronUp,
-  Keyboard,
 } from "lucide-react";
 
 // ─── Language configs ──────────────────────────────────────────────────────
@@ -238,12 +235,17 @@ echo "5! = " . factorial(5) . "\\n";`,
   },
 };
 
+// ─── Interactive terminal marker ───────────────────────────────────────────
+// Used as a sentinel: output before this marker is shown, then input box appears
+const NEEDS_INPUT_MARKER = "\x00NEEDS_INPUT\x00";
+
 // ─── JS execution in async-safe sandbox ───────────────────────────────────
 
 async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
   const outputs: string[] = [];
-  const stdinLines = stdin.split("\n");
+  const stdinLines = stdin ? stdin.split("\n") : [];
   let stdinIndex = 0;
+  const EOF_SIG = "__O2_STDIN_EOF__";
 
   const capture = (type: string) => (...args: any[]) => {
     const line = args
@@ -252,10 +254,10 @@ async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
     outputs.push(type === "log" ? line : `[${type.toUpperCase()}] ${line}`);
   };
 
-  const origLog   = console.log;
-  const origError = console.error;
-  const origWarn  = console.warn;
-  const origInfo  = console.info;
+  const origLog    = console.log;
+  const origError  = console.error;
+  const origWarn   = console.warn;
+  const origInfo   = console.info;
   const origPrompt = window.prompt;
 
   console.log   = capture("log");
@@ -263,19 +265,28 @@ async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
   console.warn  = capture("warn");
   console.info  = capture("info");
 
+  // Mock prompt() for interactive stdin
   window.prompt = (msg) => {
-    outputs.push(`[Prompt: ${msg || ""}]`);
-    const val = stdinIndex < stdinLines.length ? stdinLines[stdinIndex++] : "";
-    outputs.push(val);
-    return val;
+    if (msg) outputs.push(String(msg));  // Show prompt text in output
+    if (stdinIndex < stdinLines.length) {
+      const val = stdinLines[stdinIndex++];
+      outputs.push(val);   // Echo the input value
+      return val;
+    }
+    // Signal that we need more input — throw to stop JS execution cleanly
+    const e = new Error(EOF_SIG);
+    (e as any).__isEOF = true;
+    throw e;
   };
 
   try {
-    // Wrap in async IIFE so top-level await works
     const fn = new Function(`return (async function() {\n${code}\n})();`);
     await fn();
     return outputs.join("\n") || "Code executed successfully. (No output)";
   } catch (err: any) {
+    if ((err as any).__isEOF === true) {
+      return outputs.join("\n") + NEEDS_INPUT_MARKER;
+    }
     outputs.push(`Runtime Error: ${err.message}`);
     return outputs.join("\n");
   } finally {
@@ -350,10 +361,9 @@ async function loadPyodide(): Promise<any> {
 async function runPython(code: string, stdin: string = ""): Promise<string> {
   const py = await loadPyodide();
 
-  // Safely inject stdin via globals - avoids string escaping issues in Python source
+  // Pass stdin via globals — avoids ALL string-escaping issues
   py.globals.set("_o2_stdin_data", stdin);
 
-  // Simple, safe Python setup - no special chars inside string literals
   py.runPython([
     "import sys, builtins",
     "from io import StringIO",
@@ -375,13 +385,8 @@ async function runPython(code: string, stdin: string = ""): Promise<string> {
     const errMsg: string     = e.message || String(e);
 
     if (errMsg.includes("__NEEDS_STDIN__")) {
-      const prefix = partialOut ? partialOut.trimEnd() + "\n\n" : "";
-      return (
-        prefix +
-        "Input Required\n" +
-        "Your code called input() but no input was provided.\n" +
-        "Open the Custom Input (stdin) panel below, type your values (one per line), then Run again."
-      );
+      // Return partial stdout + marker so the UI shows interactive input inline
+      return partialOut + NEEDS_INPUT_MARKER;
     }
 
     const errOut: string = py.runPython("sys.stderr.getvalue()") || "";
@@ -428,24 +433,41 @@ function PlaygroundContent({ language }: { language: string }) {
   const langKey = language.toLowerCase();
   const langConfig = LANGUAGES[langKey];
 
-  const [code, setCode]               = useState("");
-  const [output, setOutput]           = useState("");
-  const [status, setStatus]           = useState<StatusType>("idle");
-  const [copied, setCopied]           = useState(false);
-  const [stdin, setStdin]             = useState("");
-  const [stdinOpen, setStdinOpen]     = useState(true);
+  const [code, setCode]                         = useState("");
+  const [output, setOutput]                     = useState("");
+  const [status, setStatus]                     = useState<StatusType>("idle");
+  const [copied, setCopied]                     = useState(false);
+  // Interactive terminal state
+  const [interactiveMode, setInteractiveMode]   = useState(false);
+  const [interactiveInput, setInteractiveInput] = useState("");
+  const [collectedInputs, setCollectedInputs]   = useState<string[]>([]);
+  const interactiveInputRef = useRef<HTMLInputElement>(null);
+  const outputEndRef        = useRef<HTMLDivElement>(null);
 
   const isDark = theme === "dark";
 
-  // Redirect unknown languages
+  // Auto-scroll output to bottom
+  useEffect(() => {
+    outputEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [output, interactiveMode]);
+
+  // Auto-focus interactive input when it appears
+  useEffect(() => {
+    if (interactiveMode) {
+      setTimeout(() => interactiveInputRef.current?.focus(), 30);
+    }
+  }, [interactiveMode]);
+
+  // Reset state when language changes
   useEffect(() => {
     if (!langConfig) { router.push("/"); return; }
     const saved = localStorage.getItem(`code-${langKey}`);
     setCode(saved ?? langConfig.template);
     setOutput("");
     setStatus("idle");
-    setStdin("");
-    setStdinOpen(false);
+    setInteractiveMode(false);
+    setInteractiveInput("");
+    setCollectedInputs([]);
   }, [langKey]); // eslint-disable-line
 
   const saveCode = (c: string) => {
@@ -459,7 +481,9 @@ function PlaygroundContent({ language }: { language: string }) {
     saveCode(langConfig.template);
     setOutput("");
     setStatus("idle");
-    setStdin("");
+    setInteractiveMode(false);
+    setInteractiveInput("");
+    setCollectedInputs([]);
   };
 
   const handleDownload = () => {
@@ -479,40 +503,69 @@ function PlaygroundContent({ language }: { language: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRun = useCallback(async () => {
-    if (!code.trim() || status === "running") return;
-    setStatus("running");
-    setOutput("Running...\n");
-
+  // Core execution: run code with the accumulated list of inputs
+  const executeWithInputs = useCallback(async (inputs: string[]) => {
+    const stdinStr = inputs.length > 0 ? inputs.join("\n") + "\n" : "";
     try {
       let result = "";
       if (langKey === "javascript") {
-        result = await runJSAsync(code, stdin);
+        result = await runJSAsync(code, stdinStr);
       } else if (langKey === "typescript") {
-        setOutput("Compiling TypeScript...\n");
-        result = await runTypeScript(code, stdin);
+        result = await runTypeScript(code, stdinStr);
       } else if (langKey === "python") {
-        setOutput("Loading Python runtime (first run may take ~30 seconds)...\n");
-        result = await runPython(code, stdin);
+        result = await runPython(code, stdinStr);
       } else {
-        setOutput("Connecting to compiler server...\n");
-        result = await runServer(code, langKey, stdin);
+        result = await runServer(code, langKey, stdinStr);
       }
-      setOutput(result);
-      // Auto-open stdin panel if result indicates missing input
-      const needsInput = result.includes("__NEEDS_STDIN__") || result.includes("Custom Input (stdin)") || 
-        result.includes("EOFError") || result.includes("EOF");
-      if (needsInput) {
-        setStdinOpen(true);
-        setStatus("error");
+
+      if (result.includes(NEEDS_INPUT_MARKER)) {
+        // Program paused waiting for input — show output so far + inline input box
+        const outputSoFar = result.split(NEEDS_INPUT_MARKER)[0];
+        setOutput(outputSoFar);
+        setInteractiveMode(true);
+        // status stays "running" — we're mid-execution
       } else {
+        setInteractiveMode(false);
+        setOutput(result);
         setStatus(result.toLowerCase().includes("error") ? "error" : "success");
       }
     } catch (err: any) {
+      setInteractiveMode(false);
       setOutput(`Error: ${err.message || String(err)}`);
       setStatus("error");
     }
-  }, [code, langKey, status, stdin]);
+  }, [code, langKey]);
+
+  const handleRun = useCallback(async () => {
+    if (!code.trim() || status === "running") return;
+    setStatus("running");
+    setInteractiveMode(false);
+    setInteractiveInput("");
+    setCollectedInputs([]);
+    if (langKey === "python") {
+      setOutput("Loading Python runtime (first run may take ~30s)...\n");
+    } else if (langKey === "typescript") {
+      setOutput("Compiling TypeScript...\n");
+    } else if (!LANGUAGES[langKey]?.clientSide) {
+      setOutput("Connecting to compiler...\n");
+    } else {
+      setOutput("");
+    }
+    await executeWithInputs([]);
+  }, [code, langKey, status, executeWithInputs]);
+
+  // Called when user presses Enter in the inline terminal input
+  const handleSubmitInput = useCallback(async () => {
+    const value = interactiveInput;
+    const newInputs = [...collectedInputs, value];
+    // Append the typed input to output (echo like a real terminal)
+    setOutput(prev => prev + value + "\n");
+    setInteractiveInput("");
+    setInteractiveMode(false);
+    setCollectedInputs(newInputs);
+    setStatus("running");
+    await executeWithInputs(newInputs);
+  }, [interactiveInput, collectedInputs, executeWithInputs]);
 
   // Keyboard shortcut: Ctrl+Enter to run
   useEffect(() => {
@@ -680,21 +733,12 @@ function PlaygroundContent({ language }: { language: string }) {
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setStdinOpen(!stdinOpen)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors text-xs font-semibold ${
-                    stdinOpen
-                      ? isDark ? "bg-slate-850 text-indigo-400" : "bg-slate-200 text-indigo-600"
-                      : isDark ? "text-slate-500 hover:text-slate-300 hover:bg-slate-800" : "text-slate-450 hover:text-slate-650 hover:bg-slate-100"
-                  }`}
-                  title="Configure Custom Input (stdin)"
-                >
-                  <Keyboard className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Input</span>
-                  {stdin.trim() && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                  )}
-                </button>
+                {interactiveMode && (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                    Waiting for input
+                  </span>
+                )}
                 <button
                   onClick={handleCopyOutput}
                   disabled={!output || status === "running"}
@@ -718,105 +762,98 @@ function PlaygroundContent({ language }: { language: string }) {
               </div>
             </div>
 
-            {/* Output content */}
+            {/* Output / Interactive Terminal */}
             <div
-              className={`flex-1 overflow-auto p-4 font-mono text-sm leading-relaxed ${
+              className={`flex-1 overflow-auto p-4 font-mono text-sm leading-relaxed cursor-text ${
                 isDark ? "bg-[#0d1117] text-slate-300" : "bg-white text-slate-700"
               }`}
-              style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
+              onClick={() => interactiveInputRef.current?.focus()}
             >
-              {output ? (
-                <div className={
-                  status === "error"
-                    ? "text-rose-400"
-                    : status === "success"
-                    ? isDark ? "text-slate-200" : "text-slate-800"
-                    : isDark ? "text-slate-400" : "text-slate-500"
-                }>
-                  {output}
-                </div>
-              ) : (
+              {!output && !interactiveMode ? (
                 <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
                   <Terminal className="h-10 w-10" />
                   <p className="text-sm">Press <kbd className="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded text-xs font-sans">Ctrl+Enter</kbd> to run</p>
                 </div>
-              )}
-            </div>
-
-            {/* Collapsible Stdin Panel */}
-            <div className={`border-t transition-all duration-200 shrink-0 ${
-              isDark ? "border-slate-800 bg-[#161b22]" : "border-slate-200 bg-slate-50"
-            }`}>
-              <button
-                onClick={() => setStdinOpen(!stdinOpen)}
-                className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors ${
-                  isDark ? "text-slate-300 hover:text-white" : "text-slate-700 hover:text-slate-900"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Keyboard className="h-3.5 w-3.5" />
-                  <span>Custom Input (stdin)</span>
-                  {stdin.trim() ? (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                      isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
-                    }`}>
-                      {stdin.split('\n').filter(Boolean).length} line{stdin.split('\n').filter(Boolean).length !== 1 ? 's' : ''}
-                    </span>
-                  ) : (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                      isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600"
-                    }`}>
-                      empty
+              ) : (
+                <div
+                  className={
+                    status === "error" && !interactiveMode
+                      ? "text-rose-400"
+                      : isDark ? "text-slate-200" : "text-slate-800"
+                  }
+                  style={{ whiteSpace: "pre-wrap" }}
+                >
+                  {output}
+                  {/* Inline interactive input — appears right after last output char */}
+                  {interactiveMode && (
+                    <span style={{ whiteSpace: "pre" }}>
+                      <input
+                        ref={interactiveInputRef}
+                        type="text"
+                        value={interactiveInput}
+                        onChange={e => setInteractiveInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
+                          if (e.key === "c" && e.ctrlKey) {
+                            setInteractiveMode(false);
+                            setStatus("error");
+                            setOutput(prev => prev + "^C\n");
+                          }
+                        }}
+                        spellCheck={false}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        className={`bg-transparent border-none outline-none font-mono text-sm ${
+                          isDark ? "text-emerald-400 caret-emerald-400" : "text-emerald-700 caret-emerald-700"
+                        }`}
+                        style={{
+                          width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
+                          minWidth: "2ch",
+                        }}
+                      />
+                      <span
+                        className={`inline-block w-[0.55em] h-[1em] align-middle animate-pulse ${
+                          isDark ? "bg-emerald-400" : "bg-emerald-600"
+                        }`}
+                        style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
+                      />
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-normal ${
-                    isDark ? "text-slate-500" : "text-slate-400"
-                  }`}>type input before clicking Run</span>
-                  {stdinOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-                </div>
-              </button>
-
-              {stdinOpen && (
-                <div className="px-4 pb-4 flex flex-col gap-2">
-                  <p className={`text-[11px] ${
-                    isDark ? "text-slate-500" : "text-slate-400"
-                  }`}>
-                    If your code calls <code className={`px-1 rounded ${
-                      isDark ? "bg-slate-800 text-amber-400" : "bg-slate-100 text-amber-700"
-                    }`}>input()</code>, <code className={`px-1 rounded ${
-                      isDark ? "bg-slate-800 text-amber-400" : "bg-slate-100 text-amber-700"
-                    }`}>scanf()</code>, or <code className={`px-1 rounded ${
-                      isDark ? "bg-slate-800 text-amber-400" : "bg-slate-100 text-amber-700"
-                    }`}>readline()</code> — type the values below <strong>(one per line)</strong>, then click Run.
-                  </p>
-                  <textarea
-                    id="stdin-textarea"
-                    value={stdin}
-                    onChange={(e) => setStdin(e.target.value)}
-                    placeholder={`e.g.\nAlice\n25\n100 200`}
-                    rows={4}
-                    spellCheck={false}
-                    className={`w-full p-3 text-xs font-mono rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-y ${
-                      isDark
-                        ? "bg-[#0d1117] border-slate-700 text-slate-200 placeholder-slate-600"
-                        : "bg-white border-slate-300 text-slate-800 placeholder-slate-400"
-                    }`}
-                  />
-                  {stdin.trim() && (
-                    <button
-                      onClick={() => setStdin('')}
-                      className={`self-end text-[10px] font-medium transition-colors ${
-                        isDark ? "text-slate-500 hover:text-red-400" : "text-slate-400 hover:text-red-500"
-                      }`}
-                    >
-                      Clear input
-                    </button>
-                  )}
-                </div>
               )}
+              <div ref={outputEndRef} />
             </div>
+
+            {/* Interactive hint bar — only shown when waiting for input */}
+            {interactiveMode && (
+              <div className={`border-t px-4 py-2 flex items-center gap-2 shrink-0 ${
+                isDark
+                  ? "border-emerald-900/60 bg-emerald-950/30"
+                  : "border-emerald-200 bg-emerald-50"
+              }`}>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className={`text-[11px] font-medium ${
+                  isDark ? "text-emerald-400" : "text-emerald-700"
+                }`}>
+                  Your program is waiting for input — type above and press <kbd className={`px-1 py-0.5 rounded text-[10px] font-sans ${
+                    isDark ? "bg-emerald-900 text-emerald-300" : "bg-emerald-100 text-emerald-800"
+                  }`}>Enter</kbd>
+                </span>
+                <button
+                  onClick={() => {
+                    setInteractiveMode(false);
+                    setStatus("error");
+                    setOutput(prev => prev + "\n[Terminated]");
+                  }}
+                  className={`ml-auto text-[10px] font-medium transition-colors ${
+                    isDark ? "text-slate-500 hover:text-red-400" : "text-slate-400 hover:text-red-500"
+                  }`}
+                >
+                  Kill
+                </button>
+              </div>
+            )}
           </div>
 
         </div>
