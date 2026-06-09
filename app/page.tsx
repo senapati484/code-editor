@@ -6,16 +6,19 @@ import SidebarNav from "@/components/sidebar-nav";
 import O2Logo from "@/components/logo";
 import { useSettings } from "@/contexts/settings-context";
 import { Card } from "@/components/ui/card";
+import { ArrowRight } from "lucide-react";
+import { FaHtml5, FaJava } from "react-icons/fa";
+import { FaGolang } from "react-icons/fa6";
 import {
-  Globe,
-  Code2,
-  Terminal,
-  Cpu,
-  Coffee,
-  Boxes,
-  Layers,
-  ArrowRight,
-} from "lucide-react";
+  SiJavascript,
+  SiTypescript,
+  SiPython,
+  SiC,
+  SiCplusplus,
+  SiRust,
+  SiRuby,
+  SiPhp,
+} from "react-icons/si";
 
 interface CompilerCard {
   name: string;
@@ -32,88 +35,88 @@ const PLAYGROUNDS: CompilerCard[] = [
     id: "html",
     category: "Web Frontend",
     runtime: "Browser Preview",
-    icon: Globe,
-    color: "text-orange-500",
+    icon: FaHtml5,
+    color: "text-[#E34F26]",
   },
   {
     name: "JavaScript",
     id: "javascript",
     category: "Scripting",
     runtime: "WASM Sandbox",
-    icon: Code2,
-    color: "text-yellow-500",
+    icon: SiJavascript,
+    color: "text-[#F7DF1E]",
   },
   {
     name: "TypeScript",
     id: "typescript",
     category: "Scripting",
     runtime: "WASM Compiler",
-    icon: Terminal,
-    color: "text-blue-500",
+    icon: SiTypescript,
+    color: "text-[#3178C6]",
   },
   {
     name: "Python 3",
     id: "python",
     category: "Scripting",
     runtime: "Pyodide WASM",
-    icon: Terminal,
-    color: "text-emerald-500",
+    icon: SiPython,
+    color: "text-[#3776AB]",
   },
   {
     name: "C Language",
     id: "c",
     category: "System",
     runtime: "GCC Compiler",
-    icon: Cpu,
-    color: "text-indigo-500",
+    icon: SiC,
+    color: "text-[#A8B9CC]",
   },
   {
     name: "C++",
     id: "cpp",
     category: "System",
     runtime: "G++ Compiler",
-    icon: Cpu,
-    color: "text-cyan-500",
+    icon: SiCplusplus,
+    color: "text-[#00599C]",
   },
   {
     name: "Java",
     id: "java",
     category: "OOP",
     runtime: "OpenJDK VM",
-    icon: Coffee,
-    color: "text-rose-500",
+    icon: FaJava,
+    color: "text-[#E76F51]",
   },
   {
     name: "Rust",
     id: "rust",
     category: "System",
     runtime: "Rustc Compiler",
-    icon: Boxes,
-    color: "text-orange-600",
+    icon: SiRust,
+    color: "text-[#E05D2B]",
   },
   {
     name: "Go Language",
     id: "go",
     category: "System",
     runtime: "Go Compiler",
-    icon: Terminal,
-    color: "text-sky-500",
+    icon: FaGolang,
+    color: "text-[#00ADD8]",
   },
   {
     name: "Ruby",
     id: "ruby",
     category: "Scripting",
     runtime: "Ruby Interpreter",
-    icon: Layers,
-    color: "text-red-500",
+    icon: SiRuby,
+    color: "text-[#CC342D]",
   },
   {
     name: "PHP",
     id: "php",
     category: "Backend",
     runtime: "PHP Engine",
-    icon: Layers,
-    color: "text-violet-500",
+    icon: SiPhp,
+    color: "text-[#777BB4]",
   },
 ];
 
@@ -154,17 +157,17 @@ export default function DashboardPage() {
                 }`}>
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2 rounded-lg border ${
+                      <div className={`p-2 rounded-lg border w-9 h-9 flex items-center justify-center shrink-0 ${
                         isDark ? "bg-[#0d1117] border-slate-800" : "bg-white border-slate-200"
                       }`}>
-                        <Icon className={`h-4.5 w-4.5 ${p.color}`} />
+                        <Icon className={`h-5 w-5 ${p.color}`} />
                       </div>
-                      <span className="text-[9px] font-mono font-semibold uppercase tracking-wider text-slate-500">
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         {p.runtime}
                       </span>
                     </div>
 
-                    <h3 className="text-sm font-bold tracking-tight mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+                    <h3 className="text-sm font-bold tracking-tight mb-1 text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {p.name}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -172,7 +175,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 mt-4 transition-colors">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 mt-4 transition-colors">
                     <span>Open Sandbox</span>
                     <ArrowRight className="h-3 w-3" />
                   </div>

@@ -8,15 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   LayoutDashboard,
-  Code2,
-  Globe,
-  Terminal,
-  Cpu,
-  Coffee,
-  Boxes,
   Sun,
   Moon,
 } from "lucide-react";
+import { FaHtml5, FaJava } from "react-icons/fa";
+import { FaGolang } from "react-icons/fa6";
+import {
+  SiJavascript,
+  SiTypescript,
+  SiPython,
+  SiC,
+  SiCplusplus,
+  SiRust,
+  SiRuby,
+  SiPhp,
+} from "react-icons/si";
 
 export default function SidebarNav() {
   const pathname = usePathname();
@@ -31,51 +37,69 @@ export default function SidebarNav() {
     },
     {
       name: "HTML Sandbox",
-      icon: Globe,
+      icon: FaHtml5,
       href: "/html",
-      color: "text-orange-500",
+      color: "text-[#E34F26]",
     },
     {
       name: "JavaScript",
-      icon: Code2,
+      icon: SiJavascript,
       href: "/javascript",
-      color: "text-yellow-500",
+      color: "text-[#F7DF1E]",
     },
     {
       name: "TypeScript",
-      icon: Terminal,
+      icon: SiTypescript,
       href: "/typescript",
-      color: "text-blue-500",
+      color: "text-[#3178C6]",
     },
     {
       name: "Python",
-      icon: Terminal,
+      icon: SiPython,
       href: "/python",
-      color: "text-emerald-500",
+      color: "text-[#3776AB]",
     },
     {
       name: "C",
-      icon: Cpu,
+      icon: SiC,
       href: "/c",
-      color: "text-indigo-500",
+      color: "text-[#A8B9CC]",
     },
     {
       name: "C++",
-      icon: Cpu,
+      icon: SiCplusplus,
       href: "/cpp",
-      color: "text-cyan-500",
+      color: "text-[#00599C]",
     },
     {
       name: "Java",
-      icon: Coffee,
+      icon: FaJava,
       href: "/java",
-      color: "text-rose-500",
+      color: "text-[#E76F51]",
     },
     {
       name: "Rust",
-      icon: Boxes,
+      icon: SiRust,
       href: "/rust",
-      color: "text-orange-600",
+      color: "text-[#E05D2B]",
+    },
+    {
+      name: "Go",
+      icon: FaGolang,
+      href: "/go",
+      color: "text-[#00ADD8]",
+    },
+    {
+      name: "Ruby",
+      icon: SiRuby,
+      href: "/ruby",
+      color: "text-[#CC342D]",
+    },
+    {
+      name: "PHP",
+      icon: SiPhp,
+      href: "/php",
+      color: "text-[#777BB4]",
     },
   ];
 
@@ -89,11 +113,11 @@ export default function SidebarNav() {
           ? "bg-[#161b22] border-slate-800 text-slate-400" 
           : "bg-slate-50 border-slate-200 text-slate-500"
       }`}>
-        <div className="flex flex-col items-center gap-6 w-full">
+        <div className="flex flex-col items-center gap-6 w-full overflow-y-auto no-scrollbar py-2">
           {/* Logo */}
           <Link 
             href="/" 
-            className="group relative flex items-center justify-center w-10 h-10 rounded-xl bg-transparent hover:scale-105 transition-transform duration-205"
+            className="group relative flex items-center justify-center w-10 h-10 rounded-xl bg-transparent hover:scale-105 transition-transform duration-205 shrink-0"
           >
             <O2Logo className="w-8 h-8" />
             <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 rounded-full animate-pulse ${
@@ -101,7 +125,7 @@ export default function SidebarNav() {
             }`} />
           </Link>
 
-          <div className={`w-8 h-px ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          <div className={`w-8 h-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
 
           {/* Navigation Items */}
           <nav className="flex flex-col items-center gap-3 w-full px-2">
@@ -114,20 +138,20 @@ export default function SidebarNav() {
                   <TooltipTrigger asChild>
                     <Link
                       href={item.href}
-                      className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative group ${
+                      className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative group shrink-0 ${
                         isActive
                           ? isDark 
                             ? "bg-slate-800 text-white shadow-inner scale-105 border-l-2 border-indigo-500"
                             : "bg-slate-200 text-slate-900 shadow-sm scale-105 border-l-2 border-indigo-500"
                           : isDark
-                            ? "hover:bg-slate-850 hover:text-slate-200"
+                            ? "hover:bg-slate-800 hover:text-slate-200"
                             : "hover:bg-slate-200 hover:text-slate-800"
                       }`}
                     >
                       <Icon className={`h-5 w-5 ${
                         isActive 
                           ? item.color 
-                          : isDark ? "text-slate-450 group-hover:scale-110 transition-transform duration-200" : "text-slate-600 group-hover:scale-110 transition-transform duration-200"
+                          : isDark ? "text-slate-400 group-hover:scale-110 transition-transform duration-200" : "text-slate-500 group-hover:scale-110 transition-transform duration-200"
                       }`} />
                       
                       {/* Left border indicator */}
@@ -136,7 +160,7 @@ export default function SidebarNav() {
                       )}
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className={isDark ? "bg-slate-950 text-slate-250 border-slate-800" : "bg-white text-slate-700 border-slate-200"}>
+                  <TooltipContent side="right" className={isDark ? "bg-slate-950 text-slate-200 border-slate-800" : "bg-white text-slate-700 border-slate-200"}>
                     <p className="text-xs font-semibold">{item.name}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -146,7 +170,7 @@ export default function SidebarNav() {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col items-center gap-3 w-full px-2">
+        <div className="flex flex-col items-center gap-3 w-full px-2 mt-auto pt-2 shrink-0">
           <div className={`w-8 h-px ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
 
           {/* Theme Toggle */}
@@ -157,7 +181,7 @@ export default function SidebarNav() {
                 size="icon"
                 className={`w-10 h-10 rounded-xl transition-colors ${
                   isDark 
-                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-850" 
+                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" 
                     : "text-slate-600 hover:text-slate-800 hover:bg-slate-200"
                 }`}
                 onClick={() => setTheme(isDark ? "light" : "dark")}
@@ -193,10 +217,10 @@ export default function SidebarNav() {
               className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg transition-all duration-200 relative ${
                 isActive 
                   ? isDark ? "text-white scale-105" : "text-slate-900 scale-105" 
-                  : isDark ? "text-slate-450" : "text-slate-600"
+                  : isDark ? "text-slate-400" : "text-slate-600"
               }`}
             >
-              <Icon className={`h-5 w-5 ${isActive ? item.color : isDark ? "text-slate-450" : "text-slate-600"}`} />
+              <Icon className={`h-5 w-5 ${isActive ? item.color : isDark ? "text-slate-400" : "text-slate-600"}`} />
               <span className="text-[10px] mt-0.5 truncate max-w-full font-medium">
                 {item.name.split(" ")[0]}
               </span>
