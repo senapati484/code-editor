@@ -208,9 +208,17 @@ echo "Hello, " . trim($name) . "!\\n";
 // Used as a sentinel: output before this marker is shown, then input box appears
 const NEEDS_INPUT_MARKER = "\x00NEEDS_INPUT\x00";
 
+interface ExecutionResult {
+  stdout: string;
+  stderr: string;
+  compilerError?: string;
+  hasMarker?: boolean;
+  status?: number;
+}
+
 // ─── JS execution in async-safe sandbox ───────────────────────────────────
 
-async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
+async function runJSAsync(code: string, stdin: string = ""): Promise<ExecutionResult> {
   const outputs: string[] = [];
   const stdinLines = stdin ? stdin.split("\n") : [];
   let stdinIndex = 0;
@@ -249,13 +257,24 @@ async function runJSAsync(code: string, stdin: string = ""): Promise<string> {
   try {
     const fn = new Function(`return (async function() {\n${code}\n})();`);
     await fn();
-    return outputs.join("\n") || "Code executed successfully. (No output)";
+    return {
+      stdout: outputs.join("\n") || "Code executed successfully. (No output)",
+      stderr: "",
+      hasMarker: false,
+    };
   } catch (err: any) {
     if ((err as any).__isEOF === true) {
-      return outputs.join("\n") + NEEDS_INPUT_MARKER;
+      return {
+        stdout: outputs.join("\n"),
+        stderr: "",
+        hasMarker: true,
+      };
     }
-    outputs.push(`Runtime Error: ${err.message}`);
-    return outputs.join("\n");
+    return {
+      stdout: outputs.join("\n"),
+      stderr: `Runtime Error: ${err.message}`,
+      hasMarker: false,
+    };
   } finally {
     console.log   = origLog;
     console.error = origError;
@@ -284,7 +303,7 @@ async function loadTS(): Promise<any> {
   return tsLoading;
 }
 
-async function runTypeScript(code: string, stdin: string = ""): Promise<string> {
+async function runTypeScript(code: string, stdin: string = ""): Promise<ExecutionResult> {
   const ts = await loadTS();
   const js = ts.transpileModule(code, {
     compilerOptions: {
@@ -325,7 +344,7 @@ async function loadPyodide(): Promise<any> {
   return pyodideLoading;
 }
 
-async function runPython(code: string, stdin: string = ""): Promise<string> {
+async function runPython(code: string, stdin: string = ""): Promise<ExecutionResult> {
   const py = await loadPyodide();
 
   // Pass stdin via globals — avoids ALL string-escaping issues
@@ -352,23 +371,33 @@ async function runPython(code: string, stdin: string = ""): Promise<string> {
     const errMsg: string     = e.message || String(e);
 
     if (errMsg.includes("__NEEDS_STDIN__")) {
-      // Return partial stdout + marker so the UI shows interactive input inline
-      return partialOut + NEEDS_INPUT_MARKER;
+      return {
+        stdout: partialOut,
+        stderr: "",
+        hasMarker: true,
+      };
     }
 
     const errOut: string = py.runPython("sys.stderr.getvalue()") || "";
-    return [partialOut.trimEnd(), errOut.trimEnd() || errMsg].filter(Boolean).join("\n");
+    return {
+      stdout: partialOut,
+      stderr: errOut || errMsg,
+      hasMarker: false,
+    };
   }
 
   const out: string = py.runPython("sys.stdout.getvalue()") || "";
   const err: string = py.runPython("sys.stderr.getvalue()") || "";
-  const combined    = [err && `[stderr]\n${err.trimEnd()}`, out].filter(Boolean).join("\n");
-  return combined.trim() || "Code executed successfully. (No output)";
+  return {
+    stdout: out,
+    stderr: err,
+    hasMarker: false,
+  };
 }
 
 // ─── Server-side compilation ───────────────────────────────────────────────
 
-async function runServer(code: string, langKey: string, stdin: string = ""): Promise<string> {
+async function runServer(code: string, langKey: string, stdin: string = ""): Promise<ExecutionResult> {
   const res = await fetch("/api/compile", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -377,16 +406,16 @@ async function runServer(code: string, langKey: string, stdin: string = ""): Pro
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-  const parts: string[] = [];
-  if (data.compiler_error) parts.push(`=== Compiler Error ===\n${data.compiler_error.trim()}`);
-  if (data.compiler_output) parts.push(`=== Compiler Output ===\n${data.compiler_output.trim()}`);
-  const progOut = data.program_output?.trim();
-  const progErr = data.program_error?.trim();
-  if (progOut) parts.push(progOut);
-  if (progErr) parts.push(`=== Runtime Error ===\n${progErr}`);
-  if (!progOut && !progErr) parts.push(`(Process exited with code ${data.status ?? 0})`);
+  const compilerErrorParts = [];
+  if (data.compiler_error) compilerErrorParts.push(data.compiler_error.trim());
+  if (data.compiler_output) compilerErrorParts.push(data.compiler_output.trim());
 
-  return parts.join("\n\n");
+  return {
+    stdout: data.program_output || "",
+    stderr: data.program_error || "",
+    compilerError: compilerErrorParts.join("\n\n"),
+    status: data.status,
+  };
 }
 // ─── Input detection helpers ────────────────────────────────────────────────
 const hasInputCalls = (code: string, langKey: string): boolean => {
@@ -520,20 +549,43 @@ function PlaygroundContent({ language }: { language: string }) {
   const executeWithInputs = useCallback(async (inputs: string[]) => {
     const stdinStr = inputs.length > 0 ? inputs.join("\n") + "\n" : "";
     try {
-      let result = "";
+      let runRes: ExecutionResult;
       if (langKey === "javascript") {
-        result = await runJSAsync(code, stdinStr);
+        runRes = await runJSAsync(code, stdinStr);
       } else if (langKey === "typescript") {
-        result = await runTypeScript(code, stdinStr);
+        runRes = await runTypeScript(code, stdinStr);
       } else if (langKey === "python") {
-        result = await runPython(code, stdinStr);
+        runRes = await runPython(code, stdinStr);
       } else {
-        result = await runServer(code, langKey, stdinStr);
+        runRes = await runServer(code, langKey, stdinStr);
       }
 
-      // Split client-side runtime needs-input marker
-      const hasMarker = result.includes(NEEDS_INPUT_MARKER);
-      const rawResult = hasMarker ? result.split(NEEDS_INPUT_MARKER)[0] : result;
+      // Determine if interactiveMode should be active
+      const isClientSideInput = !!runRes.hasMarker;
+      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(code, langKey) && endsWithPrompt(runRes.stdout);
+      const isInteractive = isClientSideInput || isServerSideInput;
+
+      // Reconstruct rawResult to print
+      let rawResult = "";
+      if (isInteractive) {
+        // Suppress compile/runtime errors while waiting for more inputs
+        rawResult = runRes.stdout;
+      } else {
+        const parts: string[] = [];
+        if (runRes.compilerError) parts.push(runRes.compilerError);
+        if (runRes.stdout) parts.push(runRes.stdout);
+        if (runRes.stderr) {
+          parts.push(`=== Runtime Error ===\n${runRes.stderr}`);
+        }
+        if (!runRes.compilerError && !runRes.stderr && !runRes.stdout) {
+          if (runRes.status !== undefined && runRes.status !== 0) {
+            parts.push(`(Process exited with code ${runRes.status})`);
+          } else {
+            parts.push("Code executed successfully. (No output)");
+          }
+        }
+        rawResult = parts.join("\n\n");
+      }
 
       // Reconstruct the output with prefix-matching to keep user's echoed inputs
       if (inputs.length === 0) {
@@ -550,11 +602,7 @@ function PlaygroundContent({ language }: { language: string }) {
         }
       }
 
-      // Determine if interactiveMode should be active
-      const isClientSideInput = hasMarker;
-      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(code, langKey) && endsWithPrompt(rawResult);
-
-      if (isClientSideInput || isServerSideInput) {
+      if (isInteractive) {
         setInteractiveMode(true);
       } else {
         setInteractiveMode(false);
