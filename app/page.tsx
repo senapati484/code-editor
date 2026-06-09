@@ -135,7 +135,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <O2Logo className="w-10 h-10" />
             <div>
-              <h1 className="text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">O2 Playgrounds</h1>
+              <h1 className="text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">02code Playgrounds</h1>
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Select a template sandbox to start writing and executing code instantly.
               </p>
