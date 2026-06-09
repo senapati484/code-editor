@@ -41,38 +41,27 @@ const LANGUAGES: Record<string, LangConfig> = {
     template: `// JavaScript — runs directly in your browser
 console.log("Hello, World!");
 
-const greet = (name) => \`Hello, \${name}!\`;
-console.log(greet("developer"));
-
-// Async example
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
-async function main() {
-  await delay(10);
-  console.log("Async code works too!");
-}
-main();`,
+// Interactive standard input
+const name = prompt("Enter your name: ");
+console.log(\`Hello, \${name}!\\n\`);
+`,
   },
   typescript: {
     id: "typescript", name: "TypeScript", filename: "main.ts", extension: "ts",
     color: "text-blue-400", bgAccent: "bg-blue-500/10 border-blue-500/20",
     clientSide: true,
     template: `// TypeScript — compiled in-browser via CDN
-interface Developer {
+interface User {
   name: string;
-  languages: string[];
 }
 
-const coder: Developer = {
-  name: "Developer",
-  languages: ["TypeScript", "JavaScript", "C"],
-};
+console.log("Hello, World!");
 
-console.log(\`\${coder.name} knows: \${coder.languages.join(", ")}\`);
-
-function add(a: number, b: number): number {
-  return a + b;
-}
-console.log("2 + 3 =", add(2, 3));`,
+// Interactive standard input
+const name = prompt("Enter your name: ");
+const user: User = { name };
+console.log(\`Hello, \${user.name}!\\n\`);
+`,
   },
   python: {
     id: "python", name: "Python", filename: "main.py", extension: "py",
@@ -81,19 +70,10 @@ console.log("2 + 3 =", add(2, 3));`,
     template: `# Python 3 — powered by Pyodide (WebAssembly)
 print("Hello, World!")
 
-def fibonacci(n):
-    a, b = 0, 1
-    seq = []
-    while len(seq) < n:
-        seq.append(a)
-        a, b = b, a + b
-    return seq
-
-print("Fibonacci(10):", fibonacci(10))
-
-# List comprehension
-squares = [x**2 for x in range(1, 6)]
-print("Squares:", squares)`,
+# Interactive standard input
+name = input("Enter your name: ")
+print(f"Hello, {name}!")
+`,
   },
   c: {
     id: "c", name: "C", filename: "main.c", extension: "c",
@@ -104,78 +84,77 @@ print("Squares:", squares)`,
 int main() {
     printf("Hello, World!\\n");
 
-    int arr[] = {5, 2, 8, 1, 9};
-    int n = 5;
+    // Interactive standard input
+    char name[100];
+    printf("Enter your name: ");
+    fflush(stdout); // Ensure prompt is flushed to console
+    scanf("%s", name);
+    printf("Hello, %s!\\n", name);
 
-    // Bubble sort
-    for (int i = 0; i < n - 1; i++)
-        for (int j = 0; j < n - i - 1; j++)
-            if (arr[j] > arr[j+1]) {
-                int tmp = arr[j]; arr[j] = arr[j+1]; arr[j+1] = tmp;
-            }
-
-    printf("Sorted: ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf("\\n");
     return 0;
-}`,
+}
+`,
   },
   cpp: {
     id: "cpp", name: "C++", filename: "main.cpp", extension: "cpp",
     color: "text-cyan-400", bgAccent: "bg-cyan-500/10 border-cyan-500/20",
     clientSide: false,
     template: `#include <iostream>
-#include <vector>
-#include <algorithm>
+#include <string>
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
 
-    std::vector<int> v = {5, 2, 8, 1, 9};
-    std::sort(v.begin(), v.end());
-
-    std::cout << "Sorted: ";
-    for (int x : v) std::cout << x << " ";
-    std::cout << std::endl;
+    // Interactive standard input
+    std::string name;
+    std::cout << "Enter your name: ";
+    std::cin >> name;
+    std::cout << "Hello, " << name << "!" << std::endl;
 
     return 0;
-}`,
+}
+`,
   },
   java: {
     id: "java", name: "Java", filename: "Main.java", extension: "java",
     color: "text-rose-400", bgAccent: "bg-rose-500/10 border-rose-500/20",
     clientSide: false,
-    template: `public class Main {
+    template: `import java.util.Scanner;
+
+public class Main {
     public static void main(String[] args) {
         System.out.println("Hello, World!");
 
-        String[] fruits = {"Apple", "Banana", "Cherry"};
-        for (String fruit : fruits) {
-            System.out.println("Fruit: " + fruit);
-        }
-
-        System.out.println("Sum 1-100: " + sumTo(100));
+        // Interactive standard input
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter your name: ");
+        String name = scanner.nextLine();
+        System.out.println("Hello, " + name + "!");
+        scanner.close();
     }
-
-    static int sumTo(int n) {
-        return n * (n + 1) / 2;
-    }
-}`,
+}
+`,
   },
   rust: {
     id: "rust", name: "Rust", filename: "main.rs", extension: "rs",
     color: "text-orange-400", bgAccent: "bg-orange-500/10 border-orange-500/20",
     clientSide: false,
-    template: `fn main() {
+    template: `use std::io::{self, Write};
+
+fn main() {
     println!("Hello, World!");
 
-    let numbers = vec![1, 2, 3, 4, 5];
-    let sum: i32 = numbers.iter().sum();
-    println!("Sum: {}", sum);
-
-    let squared: Vec<i32> = numbers.iter().map(|x| x * x).collect();
-    println!("Squared: {:?}", squared);
-}`,
+    // Interactive standard input
+    print!("Enter your name: ");
+    io::stdout().flush().unwrap();
+    
+    let mut name = String::new();
+    io::stdin().read_line(&mut name).unwrap();
+    let name = name.trim();
+    
+    println!("Hello, {}!", name);
+}
+`,
   },
   go: {
     id: "go", name: "Go", filename: "main.go", extension: "go",
@@ -183,18 +162,20 @@ int main() {
     clientSide: false,
     template: `package main
 
-import "fmt"
+import (
+    "fmt"
+)
 
 func main() {
     fmt.Println("Hello, World!")
 
-    nums := []int{1, 2, 3, 4, 5}
-    sum := 0
-    for _, n := range nums {
-        sum += n
-    }
-    fmt.Printf("Sum: %d\\n", sum)
-}`,
+    // Interactive standard input
+    var name string
+    fmt.Print("Enter your name: ")
+    fmt.Scanln(&name)
+    fmt.Printf("Hello, %s!\\n", name)
+}
+`,
   },
   ruby: {
     id: "ruby", name: "Ruby", filename: "main.rb", extension: "rb",
@@ -202,19 +183,11 @@ func main() {
     clientSide: false,
     template: `puts "Hello, World!"
 
-class Animal
-  def initialize(name)
-    @name = name
-  end
-
-  def speak
-    puts "#{@name} says hello!"
-  end
-end
-
-Animal.new("Cat").speak
-Animal.new("Dog").speak
-puts (1..5).map { |n| n * n }.inspect`,
+# Interactive standard input
+print "Enter your name: "
+name = gets.chomp
+puts "Hello, #{name}!"
+`,
   },
   php: {
     id: "php", name: "PHP", filename: "main.php", extension: "php",
@@ -223,15 +196,11 @@ puts (1..5).map { |n| n * n }.inspect`,
     template: `<?php
 echo "Hello, World!\\n";
 
-$fruits = ["Apple", "Banana", "Cherry"];
-foreach ($fruits as $f) {
-    echo "Fruit: $f\\n";
-}
-
-function factorial(int $n): int {
-    return $n <= 1 ? 1 : $n * factorial($n - 1);
-}
-echo "5! = " . factorial(5) . "\\n";`,
+// Interactive standard input
+echo "Enter your name: ";
+$name = readline();
+echo "Hello, " . trim($name) . "!\\n";
+`,
   },
 };
 
