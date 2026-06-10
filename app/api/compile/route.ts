@@ -89,6 +89,39 @@ export async function POST(request: Request) {
     let processedCode = code;
     if (lang === "java") {
       processedCode = code.replace(/\bpublic\s+class\b/g, "class");
+    } else if (lang === "cpp") {
+      // Make C++ std::cin throw an exception on EOF to terminate the process immediately
+      processedCode = code.replace(
+        /int\s+main\s*\([^)]*\)\s*\{/,
+        `$& std::cin.exceptions(std::ios_base::failbit | std::ios_base::badbit);`
+      );
+    } else if (lang === "c") {
+      // Redefine C standard input functions to exit on EOF to terminate the process immediately
+      processedCode = `#include <stdio.h>\n#include <stdlib.h>\n#include <stdarg.h>\ninline int o2_scanf(const char *format, ...) { va_list args; va_start(args, format); int res = vscanf(format, args); va_end(args); if (res == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return res; }\ninline char* o2_fgets(char *str, int n, FILE *stream) { char *res = fgets(str, n, stream); if (res == NULL) { fprintf(stderr, "EOFError\\n"); exit(1); } return res; }\ninline int o2_getchar(void) { int res = getchar(); if (res == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return res; }\n#define scanf o2_scanf\n#define fgets o2_fgets\n#define getchar o2_getchar\n` + code;
+    } else if (lang === "rust") {
+      // Make Rust read_line calls panic on EOF to terminate the process immediately
+      processedCode = code.replace(
+        /\.read_line\s*\(\s*&mut\s+([a-zA-Z0-9_]+)\s*\)/g,
+        `.read_line(&mut $1).map(|n| if n == 0 { panic!("EOF"); } else { n })`
+      );
+    } else if (lang === "go") {
+      // Make Go scan functions panic on EOF to terminate the process immediately
+      processedCode = code + `\nfunc o2_scanln(a ...interface{}) (int, error) { n, err := fmt.Scanln(a...); if err != nil { panic(err) }; return n, err }\nfunc o2_scan(a ...interface{}) (int, error) { n, err := fmt.Scan(a...); if err != nil { panic(err) }; return n, err }\nfunc o2_scanf(f string, a ...interface{}) (int, error) { n, err := fmt.Scanf(f, a...); if err != nil { panic(err) }; return n, err }\n`;
+      // Shadow the fmt.Scan calls with our panic-on-error helpers
+      processedCode = processedCode.replace(/\bfmt\.Scanln\s*\(/g, "o2_scanln(");
+      processedCode = processedCode.replace(/\bfmt\.Scanf\s*\(/g, "o2_scanf(");
+      processedCode = processedCode.replace(/\bfmt\.Scan\s*\(/g, "o2_scan(");
+    } else if (lang === "ruby") {
+      // Redefine Ruby Kernel.gets to raise EOFError on EOF to terminate the process immediately
+      processedCode = `def gets(*args)\n  val = super(*args)\n  raise EOFError, "EOF" if val.nil?\n  val\nend\n` + code;
+    } else if (lang === "php") {
+      // Shadow PHP input functions to trigger E_USER_ERROR on EOF to terminate the process immediately
+      processedCode = code.replace(
+        /<\?php/,
+        `<?php\nfunction o2_readline($prompt = null) { $val = readline($prompt); if ($val === false) { trigger_error("EOF", E_USER_ERROR); } return $val; }\nfunction o2_fgets($stream) { $val = fgets($stream); if ($val === false) { trigger_error("EOF", E_USER_ERROR); } return $val; }`
+      );
+      processedCode = processedCode.replace(/\breadline\s*\(/g, "o2_readline(");
+      processedCode = processedCode.replace(/\bfgets\s*\(/g, "o2_fgets(");
     }
 
     // Try Piston first — it's faster and more reliable
