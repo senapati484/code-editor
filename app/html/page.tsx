@@ -155,6 +155,7 @@ function HtmlSandboxContent() {
   const [previewVersion, setPreviewVersion] = useState(0);
   const [logs, setLogs]             = useState<LogEntry[]>([]);
   const [consoleOpen, setConsoleOpen] = useState(false);
+  const [activeTab, setActiveTab]   = useState<"editor" | "preview">("editor");
 
   const isDark = theme === "dark";
 
@@ -263,59 +264,89 @@ function HtmlSandboxContent() {
   const fileDot   = { html: "text-orange-400", css: "text-blue-400", js: "text-yellow-400" };
 
   return (
-    <div className={`flex min-h-screen ${isDark ? "bg-[#0d1117] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200`}>
+    <div className={`flex w-full max-w-full overflow-x-hidden min-h-screen ${isDark ? "bg-[#0d1117] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200`}>
       <SidebarNav />
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
 
         {/* ── Toolbar ──────────────────────────────────────────────── */}
-        <header className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${
+        <header className={`flex items-center justify-between px-3 md:px-4 py-2 border-b shrink-0 ${
           isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
         }`}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3">
             <Link
               href="/"
-              className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
+              className={`flex items-center gap-1 text-xs font-medium px-1.5 md:px-2 py-1 rounded-md transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              Back
+              <span className="hidden xs:inline">Back</span>
             </Link>
 
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border bg-orange-500/10 border-orange-500/20">
+            <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full text-xs font-bold border bg-orange-500/10 border-orange-500/20">
               <Globe className="h-3.5 w-3.5 text-orange-400" />
               <span className={isDark ? "text-slate-200" : "text-slate-700"}>Web Sandbox</span>
-              <span className={isDark ? "text-slate-500" : "text-slate-400"}>HTML · CSS · JS</span>
+              <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>HTML · CSS · JS</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Mobile View Toggle (Editor vs Preview) */}
+          <div className="flex md:hidden items-center border rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0">
+            <button
+              onClick={() => setActiveTab("editor")}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                activeTab === "editor"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              Code
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("preview");
+                buildPreview(true);
+              }}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                activeTab === "preview"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              Preview
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 md:gap-2">
             <button
               onClick={handleReset}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
             <button
               onClick={handleDownload}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
             >
               <Download className="h-3.5 w-3.5" />
-              Download
+              <span className="hidden sm:inline">Download</span>
             </button>
-            <div className={`w-px h-5 mx-1 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div className={`hidden sm:block w-px h-5 mx-1 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
             <button
-              onClick={() => buildPreview(true)}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 transition-all duration-150"
+              onClick={() => {
+                buildPreview(true);
+                setActiveTab("preview");
+              }}
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 transition-all duration-150"
             >
-              <Play className="h-4 w-4" />
-              Run
+              <Play className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">Run</span>
             </button>
           </div>
         </header>
@@ -323,8 +354,8 @@ function HtmlSandboxContent() {
         {/* ── 3-column workspace: file list | editor | preview ─────── */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* File list (narrow sidebar) */}
-          <div className={`w-36 shrink-0 flex flex-col border-r py-3 px-2 gap-1 ${
+          {/* File list (narrow sidebar) - hidden on mobile */}
+          <div className={`hidden md:flex w-36 shrink-0 flex-col border-r py-3 px-2 gap-1 ${
             isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
           }`}>
             <span className={`text-[10px] font-bold tracking-widest uppercase px-2 mb-1 ${
@@ -352,7 +383,25 @@ function HtmlSandboxContent() {
           </div>
 
           {/* Code editor */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden md:flex"}`}>
+            {/* Horizontal File Tabs for Mobile */}
+            <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              {(["html", "css", "js"] as ActiveFile[]).map(ft => (
+                <button
+                  key={ft}
+                  onClick={() => setActiveFile(ft)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold border transition-all ${
+                    activeFile === ft
+                      ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                      : "bg-transparent text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                  }`}
+                >
+                  <FileCode className="h-3.5 w-3.5" />
+                  <span>{fileLabel[ft]}</span>
+                </button>
+              ))}
+            </div>
+
             <div className={`flex items-center px-4 py-1.5 text-[11px] font-mono border-b shrink-0 ${
               isDark ? "bg-[#161b22] border-slate-800 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-400"
             }`}>
@@ -375,10 +424,10 @@ function HtmlSandboxContent() {
           </div>
 
           {/* Divider */}
-          <div className={`w-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          <div className={`hidden md:block w-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
 
           {/* Preview panel */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
+          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 relative ${activeTab === "preview" ? "flex" : "hidden md:flex"}`}>
             <div className={`flex items-center justify-between px-4 py-1.5 border-b shrink-0 ${
               isDark ? "bg-[#161b22] border-slate-800" : "bg-slate-50 border-slate-200"
             }`}>

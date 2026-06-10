@@ -182,24 +182,10 @@ export default function SyntaxHighlighter({
     )
   }, [code, fontSize, theme, isMobile])
 
-  // Auto-resize textarea and sync dimensions
+  // Sync scroll position after content changes
   useEffect(() => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      const textarea = textareaRef.current
-      const lineNumbers = lineNumbersRef.current
-
-      if (isMobile) {
-        // On mobile, ensure textarea can scroll and shows all content
-        textarea.style.height = "auto"
-        const scrollHeight = Math.max(textarea.scrollHeight, 300)
-        textarea.style.height = scrollHeight + "px"
-        lineNumbers.style.height = scrollHeight + "px"
-      }
-
-      // Sync scroll position after resize
-      setTimeout(handleScroll, 0)
-    }
-  }, [code, isMobile, handleScroll])
+    setTimeout(handleScroll, 0)
+  }, [code, handleScroll])
 
   return (
     <div
@@ -215,14 +201,12 @@ export default function SyntaxHighlighter({
       }`}
       style={{
         backgroundColor: theme === "dark" ? "#111827" : "#FFFFFF",
-        minHeight: isMobile ? "300px" : "200px",
-        height: isMobile ? "auto" : "100%",
-        maxHeight: isMobile ? "60vh" : "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <div className={`flex flex-1 ${isMobile ? "overflow-auto" : "overflow-hidden"}`}>
+      <div className="flex flex-1 overflow-hidden">
         {/* Line numbers with perfect synchronization */}
         {lineNumbers && (
           <div
@@ -263,8 +247,8 @@ export default function SyntaxHighlighter({
               caretColor: theme === "dark" ? "#60A5FA" : "#2563EB",
               fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace",
               overflow: "auto",
-              minHeight: isMobile ? "300px" : "100%",
-              maxHeight: isMobile ? "60vh" : "none",
+              height: "100%",
+              width: "100%",
               margin: 0, // No margin
               border: 0, // No border
             }}

@@ -481,6 +481,7 @@ function PlaygroundContent({ language }: { language: string }) {
   const [interactiveInput, setInteractiveInput] = useState("");
   const [collectedInputs, setCollectedInputs]   = useState<string[]>([]);
   const [lastRawOutput, setLastRawOutput]       = useState("");
+  const [activeTab, setActiveTab]               = useState<"editor" | "output">("editor");
   const interactiveInputRef = useRef<HTMLInputElement>(null);
   const outputEndRef        = useRef<HTMLDivElement>(null);
 
@@ -618,6 +619,7 @@ function PlaygroundContent({ language }: { language: string }) {
   const handleRun = useCallback(async () => {
     if (!code.trim() || status === "running") return;
     setStatus("running");
+    setActiveTab("output");
     setInteractiveMode(false);
     setInteractiveInput("");
     setCollectedInputs([]);
@@ -683,31 +685,31 @@ function PlaygroundContent({ language }: { language: string }) {
   }[status];
 
   return (
-    <div className={`flex min-h-screen ${isDark ? "bg-[#0d1117] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200`}>
+    <div className={`flex w-full max-w-full overflow-x-hidden min-h-screen ${isDark ? "bg-[#0d1117] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200`}>
       <SidebarNav />
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
 
         {/* ── Top toolbar ─────────────────────────────────────────────── */}
-        <header className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${
+        <header className={`flex items-center justify-between px-3 md:px-4 py-2 border-b shrink-0 ${
           isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
         }`}>
           {/* Left: back + lang badge */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3">
             <Link
               href="/"
-              className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
+              className={`flex items-center gap-1 text-xs font-medium px-1.5 md:px-2 py-1 rounded-md transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              Back
+              <span className="hidden xs:inline">Back</span>
             </Link>
 
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${langConfig.bgAccent}`}>
+            <div className={`flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full text-xs font-bold border ${langConfig.bgAccent}`}>
               <span className={langConfig.color}>●</span>
               <span className={`${isDark ? "text-slate-200" : "text-slate-700"}`}>{langConfig.name}</span>
-              <span className={`${isDark ? "text-slate-500" : "text-slate-400"}`}>{langConfig.filename}</span>
+              <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>{langConfig.filename}</span>
             </div>
 
             <span className={`hidden sm:inline text-[11px] px-2 py-0.5 rounded border font-mono ${
@@ -717,8 +719,32 @@ function PlaygroundContent({ language }: { language: string }) {
             </span>
           </div>
 
+          {/* Center/Right: Mobile Tab Switcher */}
+          <div className="flex md:hidden items-center border rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0">
+            <button
+              onClick={() => setActiveTab("editor")}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                activeTab === "editor"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              Code
+            </button>
+            <button
+              onClick={() => setActiveTab("output")}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                activeTab === "output"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              Output
+            </button>
+          </div>
+
           {/* Right: status + actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2">
             {status !== "idle" && (
               <div className={`hidden sm:flex items-center gap-1.5 text-xs font-medium ${statusColor}`}>
                 {StatusIcon}
@@ -728,39 +754,40 @@ function PlaygroundContent({ language }: { language: string }) {
 
             <button
               onClick={handleReset}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
               title="Reset to template"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
 
             <button
               onClick={handleDownload}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
               title="Download file"
             >
               <Download className="h-3.5 w-3.5" />
-              Save
+              <span className="hidden sm:inline">Save</span>
             </button>
 
-            <div className={`w-px h-5 mx-1 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div className={`hidden sm:block w-px h-5 mx-1 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
 
             <button
               onClick={handleRun}
               disabled={status === "running"}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shadow-lg shadow-indigo-500/20 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shadow-lg shadow-indigo-500/20 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
               title="Run (Ctrl+Enter)"
             >
               {status === "running"
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Play className="h-4 w-4" />
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Play className="h-3.5 w-3.5" />
               }
-              {status === "running" ? "Running…" : "Run"}
+              <span className="hidden xs:inline">{status === "running" ? "Running…" : "Run"}</span>
+              <span className="inline xs:hidden">{status === "running" ? "…" : "Run"}</span>
             </button>
           </div>
         </header>
@@ -769,7 +796,7 @@ function PlaygroundContent({ language }: { language: string }) {
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
           {/* Code Editor */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden md:flex"}`}>
             <div className={`flex items-center px-4 py-1.5 text-[11px] font-mono border-b shrink-0 ${
               isDark ? "bg-[#161b22] border-slate-800 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-400"
             }`}>
@@ -792,10 +819,9 @@ function PlaygroundContent({ language }: { language: string }) {
 
           {/* Divider */}
           <div className={`hidden md:block w-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
-          <div className={`block md:hidden h-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
 
           {/* Output Terminal */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "output" ? "flex" : "hidden md:flex"}`}>
             {/* Output header */}
             <div className={`flex items-center justify-between px-4 py-1.5 border-b shrink-0 ${
               isDark ? "bg-[#161b22] border-slate-800" : "bg-slate-50 border-slate-200"
