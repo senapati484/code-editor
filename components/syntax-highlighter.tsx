@@ -45,8 +45,6 @@ function escapeHtml(text: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;")
 }
 
 function highlightCode(code: string, lang: string): string {
@@ -61,7 +59,7 @@ function highlightCode(code: string, lang: string): string {
   return escapeHtml(code)
 }
 
-const DARK_TOKEN_COLORS: Record<string, string> = {
+const DARK_TOKENS: Record<string, string> = {
   comment: "#6B7280",
   prolog: "#6B7280",
   doctype: "#6B7280",
@@ -93,7 +91,7 @@ const DARK_TOKEN_COLORS: Record<string, string> = {
   deleted: "#F87171",
 }
 
-const LIGHT_TOKEN_COLORS: Record<string, string> = {
+const LIGHT_TOKENS: Record<string, string> = {
   comment: "#9CA3AF",
   prolog: "#9CA3AF",
   doctype: "#9CA3AF",
@@ -271,23 +269,17 @@ export default function SyntaxHighlighter({
     )
   }, [code, fontSize, theme, isMobile])
 
-  const sharedStyle: React.CSSProperties = {
-    fontSize: `${isMobile ? Math.max(fontSize - 2, 12) : fontSize}px`,
-    lineHeight: "1.5",
-    padding: isMobile ? "12px" : "16px",
-    whiteSpace: wordWrap ? "pre-wrap" : "pre",
-    wordBreak: wordWrap ? "break-word" : "normal",
-    fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace",
-    margin: 0,
-    border: 0,
-    overflow: "auto",
-    height: "100%",
-    width: "100%",
-    boxSizing: "border-box" as const,
-    tabSize: 2,
-  }
+  const tokenColors = theme === "dark" ? DARK_TOKENS : LIGHT_TOKENS
+  const font = `${isMobile ? Math.max(fontSize - 2, 12) : fontSize}px`
+  const mono = "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace"
+  const lh = "1.5"
+  const pad = isMobile ? "12px" : "16px"
+  const ws = wordWrap ? "pre-wrap" : "pre"
+  const wb = wordWrap ? "break-word" : "normal"
 
-  const tokenColors = theme === "dark" ? DARK_TOKEN_COLORS : LIGHT_TOKEN_COLORS
+  const cssRules = Object.entries(tokenColors)
+    .map(([token, color]) => `.se-token.se-${token}{color:${color}}`)
+    .join("\n")
 
   return (
     <div
@@ -308,15 +300,8 @@ export default function SyntaxHighlighter({
         flexDirection: "column",
       }}
     >
-      <style
-        dangerouslySetInnerHTML={{
-          __html: Object.entries(tokenColors)
-            .map(([token, color]) =>
-              `[data-editor] .token.${token}{color:${color}}`
-            )
-            .join("\n"),
-        }}
-      />
+      {/* Inject token color styles with unique class prefix 'se-' to avoid collisions */}
+      <style dangerouslySetInnerHTML={{ __html: cssRules }} />
 
       <div className="flex flex-1 overflow-hidden">
         {lineNumbers && (
@@ -335,12 +320,24 @@ export default function SyntaxHighlighter({
         )}
 
         <div className="flex-1 relative overflow-hidden">
-          {/* Highlighted code layer */}
+          {/* Highlighted code layer - scrolls in sync with textarea */}
           <pre
             ref={preRef}
             aria-hidden="true"
             style={{
-              ...sharedStyle,
+              fontSize: font,
+              lineHeight: lh,
+              padding: pad,
+              whiteSpace: ws,
+              wordBreak: wb,
+              fontFamily: mono,
+              margin: 0,
+              border: 0,
+              overflow: "hidden",
+              height: "100%",
+              width: "100%",
+              boxSizing: "border-box",
+              tabSize: 2,
               color: theme === "dark" ? "#E2E8F0" : "#1E293B",
               position: "absolute",
               top: 0,
@@ -348,11 +345,14 @@ export default function SyntaxHighlighter({
               right: 0,
               bottom: 0,
               pointerEvents: "none",
-              overflow: "hidden",
             }}
           >
             <code
-              dangerouslySetInnerHTML={{ __html: highlighted + "\n" }}
+              dangerouslySetInnerHTML={{
+                __html: highlightCode(code, language)
+                  .replace(/class="token /g, 'class="se-token se-')
+                  + "\n",
+              }}
             />
           </pre>
 
@@ -370,7 +370,19 @@ export default function SyntaxHighlighter({
             onScroll={syncScroll}
             className="w-full h-full resize-none border-0 outline-none"
             style={{
-              ...sharedStyle,
+              fontSize: font,
+              lineHeight: lh,
+              padding: pad,
+              whiteSpace: ws,
+              wordBreak: wb,
+              fontFamily: mono,
+              margin: 0,
+              border: 0,
+              overflow: "auto",
+              height: "100%",
+              width: "100%",
+              boxSizing: "border-box",
+              tabSize: 2,
               color: "transparent",
               caretColor: theme === "dark" ? "#60A5FA" : "#2563EB",
               backgroundColor: "transparent",

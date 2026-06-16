@@ -139,8 +139,14 @@ export async function POST(request: Request) {
       const result = await runWithWandbox(processedCode, lang, stdin);
       return NextResponse.json(result);
     } catch (err: any) {
+      const isInfraError =
+        pistonError.includes("Resource temporarily unavailable") ||
+        pistonError.includes("OCI runtime") ||
+        pistonError.includes("HTTP 5");
       throw new Error(
-        `Both compilation services failed.\n→ Piston: ${pistonError}\n→ Wandbox: ${err.message}`
+        isInfraError
+          ? "The compilation service is temporarily overloaded. Please try again in a few seconds."
+          : `Both compilation services failed.\n→ Piston: ${pistonError}\n→ Wandbox: ${err.message}`
       );
     }
   } catch (error: any) {
