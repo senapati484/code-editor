@@ -630,7 +630,8 @@ function PlaygroundContent({ language }: { language: string }) {
         setInteractiveMode(true);
       } else {
         setInteractiveMode(false);
-        setStatus(rawResult.toLowerCase().includes("error") ? "error" : "success");
+        const isError = (runRes.status !== undefined && runRes.status !== 0) || !!runRes.stderr;
+        setStatus(isError ? "error" : "success");
       }
     } catch (err: any) {
       setInteractiveMode(false);
