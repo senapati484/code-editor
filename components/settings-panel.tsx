@@ -126,12 +126,14 @@ export default function SettingsPanel({ isOpen, onClose, theme }: SettingsPanelP
                 </div>
               </div>
 
-              {[
-                { key: "lineNumbers", label: "Line Numbers" },
-                { key: "wordWrap", label: "Word Wrap" },
-                { key: "autoSave", label: "Auto Save" },
-                { key: "autoComplete", label: "Auto Complete" },
-              ].map(({ key, label }) => (
+              {(
+                [
+                  { key: "lineNumbers", label: "Line Numbers" },
+                  { key: "wordWrap", label: "Word Wrap" },
+                  { key: "autoSave", label: "Auto Save" },
+                  { key: "autoComplete", label: "Auto Complete" },
+                ] as const
+              ).map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between">
                   <label className={`text-sm ${theme.text} font-medium`}>{label}</label>
                   <Button

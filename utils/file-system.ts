@@ -100,7 +100,7 @@ export function deleteFile(state: FileSystemState, id: number): FileSystemState 
 export function moveFile(state: FileSystemState, id: number, newParentId: number | null): FileSystemState {
   // Prevent moving a file into its own descendant
   if (newParentId !== null) {
-    let currentParent = newParentId
+    let currentParent: number | null = newParentId
     while (currentParent !== null) {
       if (currentParent === id) return state // Would create a cycle
       const parent = state.files.find((f) => f.id === currentParent)

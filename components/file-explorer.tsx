@@ -67,7 +67,7 @@ export default function FileExplorer({
       if (!name.includes(".")) {
         name += ".html"
       }
-      const extension = name.split(".").pop()?.toLowerCase()
+      const extension = name.split(".").pop()?.toLowerCase() ?? "html"
       const validTypes = ["html", "css", "js", "ts", "c", "py", "lua"]
       const type = validTypes.includes(extension) ? extension : "html"
 
