@@ -201,7 +201,7 @@ export default function SidebarNav() {
       </aside>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-4 z-50 transition-colors duration-200 ${
+      <div className={`mobile-nav-bar md:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-4 z-50 transition-colors duration-200 ${
         isDark 
           ? "bg-[#161b22]/95 border-slate-800" 
           : "bg-slate-50/95 border-slate-200"

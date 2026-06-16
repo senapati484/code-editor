@@ -104,3 +104,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide mobile nav bar when keyboard is active (textarea or input is focused) */
+body:has(textarea:focus, input:focus) .mobile-nav-bar {
+  display: none !important;
+}
+
+body:has(textarea:focus, input:focus) main {
+  height: 100dvh !important;
+  padding-bottom: 0 !important;
+}
+

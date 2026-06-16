@@ -130,7 +130,7 @@ export default function DashboardPage() {
     }`}>
       <SidebarNav />
 
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto p-6 md:p-8 pb-24 md:pb-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-y-auto p-6 md:p-8 pb-24 md:pb-8 max-w-5xl mx-auto w-full">
         <header className="mb-8 border-b border-border pb-6">
           <div className="flex items-center gap-3">
             <O2Logo className="w-10 h-10" />

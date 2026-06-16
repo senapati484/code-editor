@@ -461,6 +461,29 @@ const endsWithPrompt = (output: string): boolean => {
   return lastChar === ":" || lastChar === "?" || lastChar === ">" || lastChar === "$";
 };
 
+const isEOFError = (stderr: string, langKey: string): boolean => {
+  if (!stderr) return false;
+  const err = stderr.toLowerCase();
+  switch (langKey) {
+    case "c":
+      return err.includes("eoferror");
+    case "cpp":
+      return err.includes("ios_base::failure") || err.includes("failbit") || err.includes("eoferror");
+    case "java":
+      return err.includes("nosuchelementexception");
+    case "rust":
+      return err.includes("panicked at 'eof'") || err.includes("panicked at \'eof\'");
+    case "go":
+      return err.includes("eof") || err.includes("panic");
+    case "ruby":
+      return err.includes("eoferror");
+    case "php":
+      return err.includes("eof") || err.includes("fatal error");
+    default:
+      return false;
+  }
+};
+
 // ─── Playground UI ────────────────────────────────────────────────────────
 
 type StatusType = "idle" | "running" | "success" | "error";
@@ -563,7 +586,7 @@ function PlaygroundContent({ language }: { language: string }) {
 
       // Determine if interactiveMode should be active
       const isClientSideInput = !!runRes.hasMarker;
-      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(code, langKey) && endsWithPrompt(runRes.stdout);
+      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(code, langKey) && (endsWithPrompt(runRes.stdout) || isEOFError(runRes.stderr, langKey));
       const isInteractive = isClientSideInput || isServerSideInput;
 
       // Reconstruct rawResult to print
