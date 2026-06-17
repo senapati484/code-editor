@@ -19,6 +19,16 @@ import {
   Monitor,
   Github,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── Initial template files ─────────────────────────────────────────────────
 
@@ -98,6 +108,7 @@ function HtmlSandboxContent() {
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [activeTab, setActiveTab]   = useState<"editor" | "preview">("editor");
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const isDark = theme === "dark";
 
@@ -184,13 +195,17 @@ function HtmlSandboxContent() {
   };
 
   const handleReset = () => {
-    if (!confirm("Reset all files to the default template?")) return;
+    setIsResetConfirmOpen(true);
+  };
+
+  const confirmReset = () => {
     setHtml(DEFAULT_HTML); setCss(DEFAULT_CSS); setJs(DEFAULT_JS);
     localStorage.removeItem("sandbox-html");
     localStorage.removeItem("sandbox-css");
     localStorage.removeItem("sandbox-js");
     setLogs([]);
     buildPreview();
+    setIsResetConfirmOpen(false);
   };
 
   const handleDownload = () => {
@@ -477,6 +492,26 @@ function HtmlSandboxContent() {
           </div>
         </div>
       </main>
+
+      <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset all files to the default template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will overwrite your current code changes with the default template. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReset}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-none"
+            >
+              Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -21,6 +21,16 @@ import {
   Github,
   ChevronDown,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── Language configs ──────────────────────────────────────────────────────
 
@@ -551,6 +561,7 @@ function PlaygroundContent({ language }: { language: string }) {
   const [lastRawOutput, setLastRawOutput]       = useState("");
   const [activeTab, setActiveTab]               = useState<"editor" | "output">("editor");
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const interactiveInputRef = useRef<HTMLInputElement>(null);
   const outputEndRef        = useRef<HTMLDivElement>(null);
 
@@ -587,8 +598,11 @@ function PlaygroundContent({ language }: { language: string }) {
   };
 
   const handleReset = () => {
+    setIsResetConfirmOpen(true);
+  };
+
+  const confirmReset = () => {
     if (!langConfig) return;
-    if (!confirm(`Reset ${langConfig.filename} to the default template?`)) return;
     saveCode(langConfig.template);
     setOutput("");
     setStatus("idle");
@@ -596,6 +610,7 @@ function PlaygroundContent({ language }: { language: string }) {
     setInteractiveInput("");
     setCollectedInputs([]);
     setLastRawOutput("");
+    setIsResetConfirmOpen(false);
   };
 
   const handleDownload = () => {
@@ -1053,6 +1068,26 @@ function PlaygroundContent({ language }: { language: string }) {
 
         </div>
       </main>
+
+      <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset {langConfig?.filename || "code"} to the default template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will overwrite your current code changes with the default template. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReset}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-none"
+            >
+              Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
