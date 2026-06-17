@@ -20,6 +20,7 @@ import {
   Check,
   Github,
   ChevronDown,
+  Sliders,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -31,6 +32,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 // ─── Language configs ──────────────────────────────────────────────────────
 
@@ -545,7 +555,7 @@ type StatusType = "idle" | "running" | "success" | "error";
 
 function PlaygroundContent({ language }: { language: string }) {
   const router = useRouter();
-  const { theme, editorSettings } = useSettings();
+  const { theme, editorSettings, updateEditorSettings } = useSettings();
 
   const langKey = language.toLowerCase();
   const langConfig = LANGUAGES[langKey];
@@ -780,7 +790,7 @@ function PlaygroundContent({ language }: { language: string }) {
       <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
 
         {/* ── Top toolbar ─────────────────────────────────────────────── */}
-        <header className="flex items-center justify-between px-3 md:px-4 py-2.5 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
+        <header className="relative z-40 flex items-center justify-between px-3 md:px-4 py-1.5 md:py-2 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
           {/* Left: back + interactive lang selector */}
           <div className="flex items-center gap-2 md:gap-3">
             <Link
@@ -877,7 +887,7 @@ function PlaygroundContent({ language }: { language: string }) {
               href="https://github.com/senapati484/code-editor"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="GitHub Repository"
             >
               <Github className="h-3.5 w-3.5" />
@@ -886,7 +896,7 @@ function PlaygroundContent({ language }: { language: string }) {
 
             <button
               onClick={handleReset}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Reset to template"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -895,12 +905,63 @@ function PlaygroundContent({ language }: { language: string }) {
 
             <button
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Download file"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Save</span>
             </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-center p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  title="Editor Settings"
+                >
+                  <Sliders className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className={theme === "dark" ? "dark bg-[#09090b] text-[#fafafa] border-zinc-800 w-56" : "bg-white text-zinc-900 border-zinc-200 w-56"}
+                align="end"
+              >
+                <DropdownMenuLabel className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-3 py-2">
+                  Editor Settings
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border/60" />
+                <DropdownMenuCheckboxItem
+                  checked={editorSettings.lineNumbers}
+                  onCheckedChange={(checked) => updateEditorSettings({ lineNumbers: checked })}
+                  className="text-xs py-2 cursor-pointer focus:bg-accent"
+                >
+                  Show Line Numbers
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={editorSettings.wordWrap}
+                  onCheckedChange={(checked) => updateEditorSettings({ wordWrap: checked })}
+                  className="text-xs py-2 cursor-pointer focus:bg-accent"
+                >
+                  Enable Word Wrap
+                </DropdownMenuCheckboxItem>
+                
+                <DropdownMenuSeparator className="bg-border/60" />
+                
+                <DropdownMenuItem
+                  onClick={handleReset}
+                  className="text-xs py-2 text-rose-500 focus:text-rose-500 cursor-pointer"
+                >
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                  <span>Reset Code</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDownload}
+                  className="text-xs py-2 cursor-pointer"
+                >
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  <span>Download File</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <div className="hidden sm:block w-px h-4 mx-1 bg-border" />
 
