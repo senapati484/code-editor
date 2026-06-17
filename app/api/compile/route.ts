@@ -75,12 +75,15 @@ async function runWithPaiza(code: string, lang: string, stdin: string = "") {
 
 function buildResult(data: any) {
   const exitCode = parseInt(data.exit_code ?? data.build_exit_code ?? "0", 10);
+  // Paiza sets build_result="success" even when there are warnings.
+  // Only surface build_stderr as compiler errors when the build actually failed.
+  const buildFailed = data.build_result === "failure";
   return {
-    status:           exitCode,
-    program_output:   data.stdout   || "",
-    program_error:    data.stderr   || "",
-    compiler_output:  data.build_stdout || "",
-    compiler_error:   data.build_stderr || "",
+    status:          exitCode,
+    program_output:  data.stdout        || "",
+    program_error:   data.stderr        || "",
+    compiler_output: data.build_stdout  || "",
+    compiler_error:  buildFailed ? (data.build_stderr || "") : "",
   };
 }
 
@@ -103,30 +106,53 @@ function preprocessCode(code: string, lang: string): string {
         `$& std::cin.exceptions(std::ios_base::failbit | std::ios_base::badbit);`
       );
 
-    case "c":
-      // Prepend helper macros that exit on EOF — use static inline to avoid linker issues
-      return (
-        `#include <stdio.h>\n` +
-        `#include <stdlib.h>\n` +
-        `#include <stdarg.h>\n` +
-        `static inline int _o2_scanf(const char *fmt, ...) {\n` +
-        `  va_list ap; va_start(ap, fmt);\n` +
-        `  int r = vscanf(fmt, ap); va_end(ap);\n` +
-        `  if (r == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return r;\n` +
-        `}\n` +
-        `static inline char* _o2_fgets(char *s, int n, FILE *f) {\n` +
-        `  char *r = fgets(s, n, f);\n` +
-        `  if (!r) { fprintf(stderr, "EOFError\\n"); exit(1); } return r;\n` +
-        `}\n` +
-        `static inline int _o2_getchar(void) {\n` +
-        `  int c = getchar();\n` +
-        `  if (c == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return c;\n` +
-        `}\n` +
-        `#define scanf  _o2_scanf\n` +
-        `#define fgets  _o2_fgets\n` +
-        `#define getchar _o2_getchar\n` +
-        code
-      );
+    case "c": {
+      // Only inject the helpers for C standard input functions that the
+      // user's code actually calls — avoids 'unused function' warnings.
+      const usesScanf   = /\bscanf\s*\(/.test(code);
+      const usesFgets   = /\bfgets\s*\(/.test(code);
+      const usesGetchar = /\bgetchar\s*\(/.test(code);
+
+      // If the code doesn't use any input functions, skip prepending entirely
+      if (!usesScanf && !usesFgets && !usesGetchar) return code;
+
+      const preamble = [
+        `#include <stdio.h>`,
+        `#include <stdlib.h>`,
+        `#include <stdarg.h>`,
+      ];
+
+      if (usesScanf) {
+        preamble.push(
+          `static inline int _o2_scanf(const char *fmt, ...) {`,
+          `  va_list ap; va_start(ap, fmt);`,
+          `  int r = vscanf(fmt, ap); va_end(ap);`,
+          `  if (r == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return r;`,
+          `}`,
+          `#define scanf _o2_scanf`
+        );
+      }
+      if (usesFgets) {
+        preamble.push(
+          `static inline char* _o2_fgets(char *s, int n, FILE *f) {`,
+          `  char *r = fgets(s, n, f);`,
+          `  if (!r) { fprintf(stderr, "EOFError\\n"); exit(1); } return r;`,
+          `}`,
+          `#define fgets _o2_fgets`
+        );
+      }
+      if (usesGetchar) {
+        preamble.push(
+          `static inline int _o2_getchar(void) {`,
+          `  int c = getchar();`,
+          `  if (c == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return c;`,
+          `}`,
+          `#define getchar _o2_getchar`
+        );
+      }
+
+      return preamble.join("\n") + "\n" + code;
+    }
 
     case "rust": {
       // Prepend a safe read_line helper that exits on EOF
