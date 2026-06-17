@@ -992,7 +992,30 @@ function PlaygroundContent({ language }: { language: string }) {
   );
 }
 
+function LoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0d1117]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+        <span className="text-slate-400 text-sm font-mono">Loading editor…</span>
+      </div>
+    </div>
+  );
+}
+
 export default function LanguagePlayground({
+  params,
+}: {
+  params: Promise<{ language: string }>;
+}) {
+  return (
+    <React.Suspense fallback={<LoadingFallback />}>
+      <LanguagePlaygroundInner params={params} />
+    </React.Suspense>
+  );
+}
+
+function LanguagePlaygroundInner({
   params,
 }: {
   params: Promise<{ language: string }>;

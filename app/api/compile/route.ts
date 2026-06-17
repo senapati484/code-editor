@@ -1,70 +1,213 @@
 import { NextResponse } from "next/server";
 
-interface LangConfig {
-  pistonLang: string;
-  pistonVersion: string;
-  filename: string;
-  wandboxCompiler: string;
-}
+// Allow the serverless function up to 30 seconds on Vercel (Hobby: 60s max)
+export const maxDuration = 30;
 
-const LANGUAGE_CONFIG: Record<string, LangConfig> = {
-  c:    { pistonLang: "c",      pistonVersion: "10.2.0", filename: "main.c",    wandboxCompiler: "gcc-head-c" },
-  cpp:  { pistonLang: "c++",    pistonVersion: "10.2.0", filename: "main.cpp",  wandboxCompiler: "gcc-head" },
-  java: { pistonLang: "java",   pistonVersion: "15.0.2", filename: "Main.java", wandboxCompiler: "openjdk-jdk-22+36" },
-  rust: { pistonLang: "rust",   pistonVersion: "1.68.2", filename: "main.rs",   wandboxCompiler: "rust-1.82.0" },
-  go:   { pistonLang: "go",     pistonVersion: "1.16.2", filename: "main.go",   wandboxCompiler: "go-1.23.2" },
-  ruby: { pistonLang: "ruby",   pistonVersion: "3.0.1",  filename: "main.rb",   wandboxCompiler: "ruby-3.4.9" },
-  php:  { pistonLang: "php",    pistonVersion: "8.2.3",  filename: "main.php",  wandboxCompiler: "php-8.3.12" },
+// Paiza.io supports: c, cpp, java, python3, go, ruby, php, rust, swift, kotlin, scala, ...
+// Language identifiers used by Paiza.io
+const PAIZA_LANG: Record<string, { lang: string; filename: string }> = {
+  c:    { lang: "c",    filename: "main.c" },
+  cpp:  { lang: "cpp",  filename: "main.cpp" },
+  java: { lang: "java", filename: "Main.java" },
+  rust: { lang: "rust", filename: "main.rs" },
+  go:   { lang: "go",   filename: "main.go" },
+  ruby: { lang: "ruby", filename: "main.rb" },
+  php:  { lang: "php",  filename: "main.php" },
 };
 
 async function runWithPaiza(code: string, lang: string, stdin: string = "") {
-  const paizaLang = lang === "cpp" ? "cpp" : lang;
+  const cfg = PAIZA_LANG[lang];
+  if (!cfg) throw new Error(`Language '${lang}' not supported`);
 
+  // Step 1: Create runner
   const createRes = await fetch("https://api.paiza.io/runners/create?api_key=guest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       source_code: code,
-      language: paizaLang,
+      language: cfg.lang,
       input: stdin,
+      longpoll: true,           // Ask Paiza to block until done (up to longpoll_timeout)
+      longpoll_timeout: 20,    // Wait up to 20s in the create call
     }),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(25000), // 25s fetch timeout for create
   });
 
-  if (!createRes.ok) throw new Error(`Paiza API error: HTTP ${createRes.status}`);
+  if (!createRes.ok) {
+    const text = await createRes.text().catch(() => createRes.status.toString());
+    throw new Error(`Paiza create error: HTTP ${createRes.status} — ${text}`);
+  }
   const createData = await createRes.json();
   if (createData.error) throw new Error(`Paiza API error: ${createData.error}`);
 
-  const id = createData.id;
+  const id: string = createData.id;
   if (!id) throw new Error("Paiza API: Failed to get execution ID");
 
-  const startTime = Date.now();
-  const timeoutMs = 25000;
-  let pollInterval = 300;
+  // If longpoll returned completed status immediately, use it
+  if (createData.status === "completed") {
+    return buildResult(createData);
+  }
 
-  while (Date.now() - startTime < timeoutMs) {
-    await new Promise(r => setTimeout(r, pollInterval));
-    pollInterval = Math.min(pollInterval + 300, 2000);
+  // Step 2: Poll for result (we have remaining time since maxDuration=30s)
+  const deadline = Date.now() + 8000; // poll for up to 8 more seconds
+  let interval = 400;
 
-    const detailsRes = await fetch(`https://api.paiza.io/runners/get_details?id=${id}&api_key=guest`, {
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!detailsRes.ok) throw new Error(`Paiza API details error: HTTP ${detailsRes.status}`);
+  while (Date.now() < deadline) {
+    await sleep(interval);
+    interval = Math.min(interval + 300, 1500);
 
-    const detailsData = await detailsRes.json();
-    if (detailsData.status === "completed") {
-      return {
-        status: detailsData.exit_code ?? (detailsData.build_stderr ? 1 : 0),
-        program_output: detailsData.stdout || "",
-        program_error: detailsData.stderr || "",
-        compiler_output: detailsData.build_stdout || "",
-        compiler_error: detailsData.build_stderr || "",
-      };
+    const detailsRes = await fetch(
+      `https://api.paiza.io/runners/get_details?id=${id}&api_key=guest`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!detailsRes.ok) continue; // transient error — try again
+
+    const data = await detailsRes.json();
+    if (data.status === "completed") {
+      return buildResult(data);
     }
   }
 
-  throw new Error("Compilation/Execution timed out on the compiler server.");
+  throw new Error(
+    "Compilation timed out. The guest compiler is busy — please try again in a moment."
+  );
 }
+
+function buildResult(data: any) {
+  const exitCode = parseInt(data.exit_code ?? data.build_exit_code ?? "0", 10);
+  return {
+    status:           exitCode,
+    program_output:   data.stdout   || "",
+    program_error:    data.stderr   || "",
+    compiler_output:  data.build_stdout || "",
+    compiler_error:   data.build_stderr || "",
+  };
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// ─── Code pre-processing ───────────────────────────────────────────────────
+// Each helper makes the program exit/panic on EOF so our interactive loop
+// knows when the program is waiting for more input.
+
+function preprocessCode(code: string, lang: string): string {
+  switch (lang) {
+    case "java":
+      // Paiza.io requires the public class to be named "Main"
+      return code.replace(/\bpublic\s+class\s+\w+/g, "public class Main");
+
+    case "cpp":
+      // Make cin throw on EOF so the process terminates quickly
+      return code.replace(
+        /int\s+main\s*\([^)]*\)\s*\{/,
+        `$& std::cin.exceptions(std::ios_base::failbit | std::ios_base::badbit);`
+      );
+
+    case "c":
+      // Prepend helper macros that exit on EOF — use static inline to avoid linker issues
+      return (
+        `#include <stdio.h>\n` +
+        `#include <stdlib.h>\n` +
+        `#include <stdarg.h>\n` +
+        `static inline int _o2_scanf(const char *fmt, ...) {\n` +
+        `  va_list ap; va_start(ap, fmt);\n` +
+        `  int r = vscanf(fmt, ap); va_end(ap);\n` +
+        `  if (r == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return r;\n` +
+        `}\n` +
+        `static inline char* _o2_fgets(char *s, int n, FILE *f) {\n` +
+        `  char *r = fgets(s, n, f);\n` +
+        `  if (!r) { fprintf(stderr, "EOFError\\n"); exit(1); } return r;\n` +
+        `}\n` +
+        `static inline int _o2_getchar(void) {\n` +
+        `  int c = getchar();\n` +
+        `  if (c == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return c;\n` +
+        `}\n` +
+        `#define scanf  _o2_scanf\n` +
+        `#define fgets  _o2_fgets\n` +
+        `#define getchar _o2_getchar\n` +
+        code
+      );
+
+    case "rust": {
+      // Prepend a safe read_line helper that exits on EOF
+      const helper =
+        `use std::io::BufRead;\n` +
+        `fn _o2_read_line(buf: &mut String) {\n` +
+        `  let n = std::io::stdin().lock().read_line(buf).unwrap_or(0);\n` +
+        `  if n == 0 { eprintln!("EOFError"); std::process::exit(1); }\n` +
+        `}\n`;
+      // Replace any variant of stdin().read_line(&mut var).unwrap()/.expect()
+      // with a simple call to our helper (which returns nothing — unit type)
+      const patched = code.replace(
+        /(?:io::stdin|std::io::stdin)\(\)\.read_line\s*\(\s*&mut\s+([a-zA-Z0-9_]+)\s*\)(?:\s*\.(?:unwrap|expect)\s*\([^)]*\))?/g,
+        "_o2_read_line(&mut $1)"
+      );
+      return helper + patched;
+    }
+
+    case "go": {
+      // Replace fmt.Scan* calls with wrappers that panic on error
+      // Important: do replacement BEFORE appending helpers to avoid recursion
+      let out = code
+        .replace(/\bfmt\.Scanln\s*\(/g, "_o2_scanln(")
+        .replace(/\bfmt\.Scanf\s*\(/g,  "_o2_scanf(")
+        .replace(/\bfmt\.Scan\b\s*\(/g, "_o2_scan(");
+      out +=
+        `\nfunc _o2_scan(a ...interface{}) (int, error) {\n` +
+        `  n, err := fmt.Scan(a...)\n` +
+        `  if err != nil { panic(err) }\n` +
+        `  return n, err\n` +
+        `}\n` +
+        `func _o2_scanln(a ...interface{}) (int, error) {\n` +
+        `  n, err := fmt.Scanln(a...)\n` +
+        `  if err != nil { panic(err) }\n` +
+        `  return n, err\n` +
+        `}\n` +
+        `func _o2_scanf(f string, a ...interface{}) (int, error) {\n` +
+        `  n, err := fmt.Scanf(f, a...)\n` +
+        `  if err != nil { panic(err) }\n` +
+        `  return n, err\n` +
+        `}\n`;
+      return out;
+    }
+
+    case "ruby":
+      // Override gets to raise EOFError on nil
+      return (
+        `def gets(*args)\n` +
+        `  val = STDIN.gets(*args)\n` +
+        `  raise EOFError, "EOF" if val.nil?\n` +
+        `  val\n` +
+        `end\n` +
+        code
+      );
+
+    case "php": {
+      // Replace readline/fgets(STDIN) with wrappers — do replacements first to avoid recursion
+      let out = code
+        .replace(/\breadline\s*\(/g, "_o2_readline(")
+        .replace(/\bfgets\s*\(\s*STDIN/g, "_o2_fgets(STDIN");
+      // Inject helpers right after <?php
+      const helpers =
+        `function _o2_readline($prompt = null) {\n` +
+        `  $v = readline($prompt);\n` +
+        `  if ($v === false) { trigger_error("EOF", E_USER_ERROR); }\n` +
+        `  return $v;\n` +
+        `}\n` +
+        `function _o2_fgets($f) {\n` +
+        `  $v = fgets($f);\n` +
+        `  if ($v === false) { trigger_error("EOF", E_USER_ERROR); }\n` +
+        `  return $v;\n` +
+        `}\n`;
+      return out.replace(/(<\?php)/, `$1\n${helpers}`);
+    }
+
+    default:
+      return code;
+  }
+}
+
+// ─── Route handler ─────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
@@ -75,58 +218,20 @@ export async function POST(request: Request) {
     }
 
     const lang = (language || "").toLowerCase();
-    if (!LANGUAGE_CONFIG[lang]) {
+    if (!PAIZA_LANG[lang]) {
       return NextResponse.json(
         { error: `Language '${language}' is not supported for server-side compilation.` },
         { status: 400 }
       );
     }
 
-    let processedCode = code;
-    if (lang === "java") {
-      processedCode = code.replace(/\bpublic\s+class\b/g, "class");
-    } else if (lang === "cpp") {
-      // Make C++ std::cin throw an exception on EOF to terminate the process immediately
-      processedCode = code.replace(
-        /int\s+main\s*\([^)]*\)\s*\{/,
-        `$& std::cin.exceptions(std::ios_base::failbit | std::ios_base::badbit);`
-      );
-    } else if (lang === "c") {
-      // Redefine C standard input functions to exit on EOF to terminate the process immediately
-      processedCode = `#include <stdio.h>\n#include <stdlib.h>\n#include <stdarg.h>\nstatic inline int o2_scanf(const char *format, ...) { va_list args; va_start(args, format); int res = vscanf(format, args); va_end(args); if (res == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return res; }\nstatic inline char* o2_fgets(char *str, int n, FILE *stream) { char *res = fgets(str, n, stream); if (res == NULL) { fprintf(stderr, "EOFError\\n"); exit(1); } return res; }\nstatic inline int o2_getchar(void) { int res = getchar(); if (res == EOF) { fprintf(stderr, "EOFError\\n"); exit(1); } return res; }\n#define scanf o2_scanf\n#define fgets o2_fgets\n#define getchar o2_getchar\n` + code;
-    } else if (lang === "rust") {
-      // Make Rust read_line calls panic on EOF to terminate the process immediately
-      processedCode = code.replace(
-        /\.read_line\s*\(\s*&mut\s+([a-zA-Z0-9_]+)\s*\)/g,
-        `.read_line(&mut $1).map(|n| if n == 0 { panic!("EOF"); } else { n })`
-      );
-    } else if (lang === "go") {
-      // Shadow the fmt.Scan calls with our panic-on-error helpers first (avoiding helper recursion)
-      processedCode = code.replace(/\bfmt\.Scanln\s*\(/g, "o2_scanln(");
-      processedCode = processedCode.replace(/\bfmt\.Scanf\s*\(/g, "o2_scanf(");
-      processedCode = processedCode.replace(/\bfmt\.Scan\s*\(/g, "o2_scan(");
-      // Append the helpers (which still call standard fmt scan functions internally)
-      processedCode = processedCode + `\nfunc o2_scanln(a ...interface{}) (int, error) { n, err := fmt.Scanln(a...); if err != nil { panic(err) }; return n, err }\nfunc o2_scan(a ...interface{}) (int, error) { n, err := fmt.Scan(a...); if err != nil { panic(err) }; return n, err }\nfunc o2_scanf(f string, a ...interface{}) (int, error) { n, err := fmt.Scanf(f, a...); if err != nil { panic(err) }; return n, err }\n`;
-    } else if (lang === "ruby") {
-      // Redefine Ruby Kernel.gets to raise EOFError on EOF to terminate the process immediately
-      processedCode = `def gets(*args)\n  val = super(*args)\n  raise EOFError, "EOF" if val.nil?\n  val\nend\n` + code;
-    } else if (lang === "php") {
-      // Shadow PHP input functions to trigger E_USER_ERROR on EOF first (avoiding helper recursion)
-      processedCode = code.replace(/\breadline\s*\(/g, "o2_readline(");
-      processedCode = processedCode.replace(/\bfgets\s*\(/g, "o2_fgets(");
-      // Prepend PHP input function definitions
-      processedCode = processedCode.replace(
-        /<\?php/,
-        `<?php\nfunction o2_readline($prompt = null) { $val = readline($prompt); if ($val === false) { trigger_error("EOF", E_USER_ERROR); } return $val; }\nfunction o2_fgets($stream) { $val = fgets($stream); if ($val === false) { trigger_error("EOF", E_USER_ERROR); } return $val; }`
-      );
-    }
-
+    const processedCode = preprocessCode(code, lang);
     const result = await runWithPaiza(processedCode, lang, stdin);
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error("[compile] Fatal error:", error);
+    console.error("[compile] Error:", error?.message ?? error);
     return NextResponse.json(
-      { error: error.message || "Failed to compile and run code." },
+      { error: error?.message || "Failed to compile and run code." },
       { status: 500 }
     );
   }
