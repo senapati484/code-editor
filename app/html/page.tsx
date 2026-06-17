@@ -27,18 +27,10 @@ const DEFAULT_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web Sandbox</title>
+  <title>O2 Code Sandbox</title>
 </head>
 <body>
-  <div class="card">
-    <div class="header">
-      <span class="logo">⚡</span>
-      <h1>HTML · CSS · JS Sandbox</h1>
-    </div>
-    <p>Edit the three files on the left and click <strong>Run</strong> to see your changes live.</p>
-    <button id="btn">Click me!</button>
-    <div id="out" class="output">Events appear here…</div>
-  </div>
+  <h1>O2 code is life</h1>
 </body>
 </html>`;
 
@@ -48,90 +40,23 @@ const DEFAULT_CSS = `body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #09090b;
+  color: #ffffff;
 }
-
-.card {
-  max-width: 480px;
-  padding: 32px;
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  text-align: center;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.logo { font-size: 32px; }
 
 h1 {
-  margin: 0;
-  font-size: 22px;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.05em;
   background: linear-gradient(90deg, #818cf8, #c084fc);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-p {
-  font-size: 14px;
-  color: #94a3b8;
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-
-button {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  border: none;
-  padding: 10px 28px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 15px rgba(99,102,241,0.4);
-}
-
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99,102,241,0.6);
-}
-
-.output {
-  margin-top: 16px;
-  padding: 10px 14px;
-  font-family: monospace;
-  font-size: 13px;
-  background: rgba(15,23,42,0.7);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 8px;
-  color: #38bdf8;
-  min-height: 36px;
+  margin: 0;
 }`;
 
-const DEFAULT_JS = `const btn = document.getElementById('btn');
-const out = document.getElementById('out');
-
-let count = 0;
-
-btn.addEventListener('click', () => {
-  count++;
-  const time = new Date().toLocaleTimeString();
-  out.textContent = \`Clicked \${count} time\${count === 1 ? '' : 's'} · \${time}\`;
-  console.log('Button clicked at', time);
-});
-
-console.log('Sandbox ready!');`;
+const DEFAULT_JS = `console.log("O2 HTML Sandbox is ready!");
+console.log("O2 code is life!");`;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

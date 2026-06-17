@@ -42,12 +42,8 @@ const LANGUAGES: Record<string, LangConfig> = {
     color: "text-yellow-400", bgAccent: "bg-yellow-500/10 border-yellow-500/20",
     brandColor: "#F7DF1E",
     clientSide: true,
-    template: `// JavaScript — runs directly in your browser
-console.log("Hello, World!");
-
-// Interactive standard input
-const name = prompt("Enter your name: ");
-console.log(\`Hello, \${name}!\\n\`);
+    template: `// JavaScript on O2 code
+console.log("JavaScript on O2 code is life!");
 `,
   },
   typescript: {
@@ -55,17 +51,9 @@ console.log(\`Hello, \${name}!\\n\`);
     color: "text-blue-400", bgAccent: "bg-blue-500/10 border-blue-500/20",
     brandColor: "#3178C6",
     clientSide: true,
-    template: `// TypeScript — compiled in-browser via CDN
-interface User {
-  name: string;
-}
-
-console.log("Hello, World!");
-
-// Interactive standard input
-const name = prompt("Enter your name: ");
-const user: User = { name };
-console.log(\`Hello, \${user.name}!\\n\`);
+    template: `// TypeScript on O2 code
+const message: string = "TypeScript on O2 code is life!";
+console.log(message);
 `,
   },
   python: {
@@ -73,12 +61,8 @@ console.log(\`Hello, \${user.name}!\\n\`);
     color: "text-emerald-400", bgAccent: "bg-emerald-500/10 border-emerald-500/20",
     brandColor: "#3776AB",
     clientSide: true,
-    template: `# Python 3 — powered by Pyodide (WebAssembly)
-print("Hello, World!")
-
-# Interactive standard input
-name = input("Enter your name: ")
-print(f"Hello, {name}!")
+    template: `# Python 3 on O2 code
+print("Python on O2 code is life!")
 `,
   },
   c: {
@@ -89,15 +73,7 @@ print(f"Hello, {name}!")
     template: `#include <stdio.h>
 
 int main() {
-    printf("Hello, World!\\n");
-
-    // Interactive standard input
-    char name[100];
-    printf("Enter your name: ");
-    fflush(stdout); // Ensure prompt is flushed to console
-    scanf("%s", name);
-    printf("Hello, %s!\\n", name);
-
+    printf("C on O2 code is life!\\n");
     return 0;
 }
 `,
@@ -108,17 +84,9 @@ int main() {
     brandColor: "#00599C",
     clientSide: false,
     template: `#include <iostream>
-#include <string>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
-
-    // Interactive standard input
-    std::string name;
-    std::cout << "Enter your name: ";
-    std::cin >> name;
-    std::cout << "Hello, " << name << "!" << std::endl;
-
+    std::cout << "C++ on O2 code is life!" << std::endl;
     return 0;
 }
 `,
@@ -128,18 +96,9 @@ int main() {
     color: "text-rose-400", bgAccent: "bg-rose-500/10 border-rose-500/20",
     brandColor: "#E76F51",
     clientSide: false,
-    template: `import java.util.Scanner;
-
-public class Main {
+    template: `public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello, World!");
-
-        // Interactive standard input
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter your name: ");
-        String name = scanner.nextLine();
-        System.out.println("Hello, " + name + "!");
-        scanner.close();
+        System.out.println("Java on O2 code is life!");
     }
 }
 `,
@@ -149,20 +108,8 @@ public class Main {
     color: "text-orange-400", bgAccent: "bg-orange-500/10 border-orange-500/20",
     brandColor: "#E05D2B",
     clientSide: false,
-    template: `use std::io::{self, Write};
-
-fn main() {
-    println!("Hello, World!");
-
-    // Interactive standard input
-    print!("Enter your name: ");
-    io::stdout().flush().unwrap();
-    
-    let mut name = String::new();
-    io::stdin().read_line(&mut name).unwrap();
-    let name = name.trim();
-    
-    println!("Hello, {}!", name);
+    template: `fn main() {
+    println!("Rust on O2 code is life!");
 }
 `,
   },
@@ -173,18 +120,10 @@ fn main() {
     clientSide: false,
     template: `package main
 
-import (
-    "fmt"
-)
+import "fmt"
 
 func main() {
-    fmt.Println("Hello, World!")
-
-    // Interactive standard input
-    var name string
-    fmt.Print("Enter your name: ")
-    fmt.Scanln(&name)
-    fmt.Printf("Hello, %s!\\n", name)
+    fmt.Println("Go on O2 code is life!")
 }
 `,
   },
@@ -193,12 +132,7 @@ func main() {
     color: "text-red-400", bgAccent: "bg-red-500/10 border-red-500/20",
     brandColor: "#CC342D",
     clientSide: false,
-    template: `puts "Hello, World!"
-
-# Interactive standard input
-print "Enter your name: "
-name = gets.chomp
-puts "Hello, #{name}!"
+    template: `puts "Ruby on O2 code is life!"
 `,
   },
   php: {
@@ -207,12 +141,7 @@ puts "Hello, #{name}!"
     brandColor: "#777BB4",
     clientSide: false,
     template: `<?php
-echo "Hello, World!\\n";
-
-// Interactive standard input
-echo "Enter your name: ";
-$name = readline();
-echo "Hello, " . trim($name) . "!\\n";
+echo "PHP on O2 code is life!\\n";
 `,
   },
   sql: {
@@ -220,24 +149,8 @@ echo "Hello, " . trim($name) . "!\\n";
     color: "text-[#00758F]", bgAccent: "bg-[#00758F]/10 border-[#00758F]/20",
     brandColor: "#00758F",
     clientSide: true,
-    template: `-- SQL Online Editor (SQLite WebAssembly)
-
--- Create a sample table
-CREATE TABLE IF NOT EXISTS Users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE,
-    country TEXT
-);
-
--- Insert sample records
-INSERT INTO Users (name, email, country) VALUES
-('Alice Smith', 'alice@example.com', 'USA'),
-('Bob Jones', 'bob@example.com', 'UK'),
-('Charlie Brown', 'charlie@example.com', 'Canada');
-
--- Select and view all records
-SELECT * FROM Users;
+    template: `-- SQL (SQLite) on O2 code
+SELECT 'SQL on O2 code is life!' AS status;
 `,
   },
 };
