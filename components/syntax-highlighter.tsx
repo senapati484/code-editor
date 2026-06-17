@@ -107,9 +107,9 @@ function tokenizeJavaScript(code: string): Token[] {
       let end = i
       if (code[end] === "0" && (code[end + 1] === "x" || code[end + 1] === "X")) {
         end += 2
-        while (/[0-9a-fA-F]/.test(code[end])) end++
+        while (end < code.length && /[0-9a-fA-F]/.test(code[end])) end++
       } else {
-        while (/[0-9.eE+\-]/.test(code[end])) end++
+        while (end < code.length && /[0-9.eE+\-]/.test(code[end])) end++
       }
       tokens.push({ type: "number", text: code.slice(i, end) })
       i = end
@@ -118,7 +118,7 @@ function tokenizeJavaScript(code: string): Token[] {
     // Word (keyword, boolean, function, builtin, etc)
     if (/[a-zA-Z_$]/.test(code[i])) {
       let end = i
-      while (/[a-zA-Z0-9_$]/.test(code[end])) end++
+      while (end < code.length && /[a-zA-Z0-9_$]/.test(code[end])) end++
       const word = code.slice(i, end)
       const JS_KEYWORDS = ["async", "await", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "export", "extends", "finally", "for", "function", "if", "import", "in", "instanceof", "let", "new", "of", "return", "static", "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while", "with", "yield"]
       const JS_TYPES = ["Array", "Boolean", "Date", "Error", "Function", "Map", "Number", "Object", "Promise", "RegExp", "Set", "String", "Symbol", "WeakMap", "WeakSet", "null", "undefined", "true", "false", "NaN", "Infinity"]
@@ -237,7 +237,7 @@ function tokenizeKeywords(code: string, keywords: string[], builtins: string[]):
   while (i < code.length) {
     if (/[a-zA-Z_]/.test(code[i])) {
       let end = i
-      while (/[a-zA-Z0-9_]/.test(code[end])) end++
+      while (end < code.length && /[a-zA-Z0-9_]/.test(code[end])) end++
       const word = code.slice(i, end)
       if (keywords.includes(word)) {
         parts.push(`<span class="se-token se-keyword">${htmlEscape(word)}</span>`)
@@ -253,7 +253,7 @@ function tokenizeKeywords(code: string, keywords: string[], builtins: string[]):
     }
     if (/[0-9]/.test(code[i])) {
       let end = i
-      while (/[0-9.xXa-fA-F]/.test(code[end])) end++
+      while (end < code.length && /[0-9.xXa-fA-F]/.test(code[end])) end++
       parts.push(`<span class="se-token se-number">${htmlEscape(code.slice(i, end))}</span>`)
       i = end
       continue
