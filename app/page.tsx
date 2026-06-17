@@ -1,10 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import SidebarNav from "@/components/sidebar-nav";
 import { useSettings } from "@/contexts/settings-context";
-import { Card } from "@/components/ui/card";
 import { ArrowRight, Github, Database } from "lucide-react";
 import { FaHtml5, FaJava } from "react-icons/fa";
 import { FaGolang } from "react-icons/fa6";
@@ -26,6 +25,7 @@ interface CompilerCard {
   runtime: string;
   icon: React.ComponentType<any>;
   color: string;
+  brandColor: string;
 }
 
 const PLAYGROUNDS: CompilerCard[] = [
@@ -36,6 +36,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "Browser Preview",
     icon: FaHtml5,
     color: "text-[#E34F26]",
+    brandColor: "#E34F26",
   },
   {
     name: "JavaScript",
@@ -44,6 +45,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "WASM Sandbox",
     icon: SiJavascript,
     color: "text-[#F7DF1E]",
+    brandColor: "#F7DF1E",
   },
   {
     name: "TypeScript",
@@ -52,6 +54,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "WASM Compiler",
     icon: SiTypescript,
     color: "text-[#3178C6]",
+    brandColor: "#3178C6",
   },
   {
     name: "Python 3",
@@ -60,6 +63,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "Pyodide WASM",
     icon: SiPython,
     color: "text-[#3776AB]",
+    brandColor: "#3776AB",
   },
   {
     name: "C Language",
@@ -68,6 +72,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "GCC Compiler",
     icon: SiC,
     color: "text-[#A8B9CC]",
+    brandColor: "#A8B9CC",
   },
   {
     name: "C++",
@@ -76,6 +81,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "G++ Compiler",
     icon: SiCplusplus,
     color: "text-[#00599C]",
+    brandColor: "#00599C",
   },
   {
     name: "Java",
@@ -84,6 +90,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "OpenJDK VM",
     icon: FaJava,
     color: "text-[#E76F51]",
+    brandColor: "#E76F51",
   },
   {
     name: "Rust",
@@ -92,6 +99,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "Rustc Compiler",
     icon: SiRust,
     color: "text-[#E05D2B]",
+    brandColor: "#E05D2B",
   },
   {
     name: "Go Language",
@@ -100,6 +108,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "Go Compiler",
     icon: FaGolang,
     color: "text-[#00ADD8]",
+    brandColor: "#00ADD8",
   },
   {
     name: "Ruby",
@@ -108,6 +117,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "Ruby Interpreter",
     icon: SiRuby,
     color: "text-[#CC342D]",
+    brandColor: "#CC342D",
   },
   {
     name: "PHP",
@@ -116,6 +126,7 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "PHP Engine",
     icon: SiPhp,
     color: "text-[#777BB4]",
+    brandColor: "#777BB4",
   },
   {
     name: "SQL (SQLite)",
@@ -124,24 +135,25 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "SQLite WASM",
     icon: Database,
     color: "text-[#00758F]",
+    brandColor: "#00758F",
   },
 ];
 
 export default function DashboardPage() {
   const { theme } = useSettings();
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const isDark = theme === "dark";
 
   return (
-    <div className={`flex w-full max-w-full overflow-x-hidden min-h-screen transition-colors duration-200 ${
-      isDark ? "bg-[#0d1117] text-slate-100" : "bg-white text-slate-900"
-    }`}>
+    <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
       <SidebarNav />
 
-      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-y-auto p-6 md:p-8 pb-24 md:pb-8 max-w-5xl mx-auto w-full">
-        <header className="mb-8 border-b border-border pb-6 flex items-center justify-between animate-fade-in">
+      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-y-auto p-6 md:p-10 pb-24 md:pb-10 max-w-5xl mx-auto w-full">
+        {/* Header section */}
+        <header className="mb-10 border-b border-border/50 pb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">o2 code</h1>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            <h1 className="text-xl font-medium tracking-tight text-foreground">o2 code</h1>
+            <p className="text-xs text-muted-foreground mt-1">
               Select a template to start writing and executing code instantly.
             </p>
           </div>
@@ -150,58 +162,68 @@ export default function DashboardPage() {
             href="https://github.com/senapati484/code-editor"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-              isDark 
-                ? "bg-[#161b22] border-slate-800 hover:border-slate-700 text-slate-200 hover:bg-[#1f242c]" 
-                : "bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-100"
-            }`}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent/40 hover:border-muted-foreground/30 transition-all shadow-sm"
           >
-            <Github className="h-4 w-4" />
-            <span className="hidden sm:inline">GitHub</span>
+            <Github className="h-3.5 w-3.5" />
+            <span>GitHub</span>
           </a>
         </header>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+        {/* Playgrounds grid */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {PLAYGROUNDS.map((p) => {
             const Icon = p.icon;
             const href = p.id === "html" ? "/html" : `/${p.id}`;
+            const isHovered = hoveredCard === p.id;
 
             return (
-              <Link href={href} key={p.id} className="group block">
-                <Card className={`p-5 flex flex-col h-full justify-between transition-all border duration-250 hover:-translate-y-0.5 hover:shadow-md ${
-                  isDark
-                    ? "bg-[#161b22] border-slate-800 hover:border-indigo-500/30 hover:bg-[#1a2029]"
-                    : "bg-slate-50 border-slate-200 hover:border-indigo-500/30 hover:bg-slate-100/60"
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-2 rounded-xl border w-10 h-10 flex items-center justify-center shrink-0 ${
-                        isDark ? "bg-[#0d1117] border-slate-800" : "bg-white border-slate-200"
-                      }`}>
-                        <Icon className={`h-5.5 w-5.5 ${p.color}`} />
-                      </div>
-                      <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                        isDark 
-                          ? "bg-slate-900/60 border-slate-800/80 text-slate-400" 
-                          : "bg-slate-100 border-slate-200 text-slate-500"
-                      }`}>
-                        {p.runtime}
-                      </span>
+              <Link
+                href={href}
+                key={p.id}
+                className="group block outline-none"
+                onMouseEnter={() => setHoveredCard(p.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+              >
+                <div
+                  className="p-6 flex flex-col h-48 justify-between transition-all duration-300 rounded-xl border border-border bg-card shadow-sm cursor-pointer"
+                  style={
+                    isHovered
+                      ? {
+                          borderColor: p.brandColor,
+                          boxShadow: isDark
+                            ? `0 0 25px -5px ${p.brandColor}1b, inset 0 0 15px -10px ${p.brandColor}30`
+                            : `0 8px 30px -10px ${p.brandColor}25`,
+                          transform: "translateY(-2px)",
+                        }
+                      : {}
+                  }
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center justify-center shrink-0">
+                      <Icon
+                        className="h-8 w-8 transition-transform group-hover:scale-105 duration-300"
+                        style={{ color: p.brandColor }}
+                      />
                     </div>
+                    
+                    <span className="text-[10px] font-mono tracking-wider text-muted-foreground opacity-80 uppercase">
+                      {p.runtime}
+                    </span>
+                  </div>
 
-                    <h3 className="text-sm font-bold tracking-tight mb-1 text-slate-800 dark:text-slate-100 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
-                      {p.name}
+                  <div>
+                    <h3 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+                      <span>{p.name}</span>
+                      <ArrowRight 
+                        className="h-3.5 w-3.5 text-muted-foreground transition-all duration-300 opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0"
+                        style={{ color: isHovered ? p.brandColor : undefined }}
+                      />
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <p className="text-[11px] text-muted-foreground mt-1 font-medium">
                       {p.category}
                     </p>
                   </div>
-
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 mt-5 transition-colors">
-                    <span>Start Coding</span>
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 duration-150" />
-                  </div>
-                </Card>
+                </div>
               </Link>
             );
           })}

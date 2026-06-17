@@ -115,27 +115,21 @@ export default function SidebarNav() {
   return (
     <TooltipProvider>
       {/* Desktop Sidebar */}
-      <aside className={`hidden md:flex flex-col items-center justify-between w-16 h-screen py-4 border-r shrink-0 sticky top-0 z-40 transition-colors duration-200 ${
-        isDark 
-          ? "bg-[#161b22] border-slate-800 text-slate-400" 
-          : "bg-slate-50 border-slate-200 text-slate-500"
-      }`}>
+      <aside className="hidden md:flex flex-col items-center justify-between w-16 h-screen py-4 border-r border-border bg-background text-muted-foreground shrink-0 sticky top-0 z-40 transition-colors duration-200">
         <div className="flex flex-col items-center gap-6 w-full overflow-y-auto no-scrollbar py-2">
           {/* Logo */}
           <Link 
             href="/" 
-            className="group relative flex items-center justify-center w-10 h-10 rounded-xl bg-transparent hover:scale-105 transition-transform duration-205 shrink-0"
+            className="group relative flex items-center justify-center w-10 h-10 rounded-xl bg-transparent hover:scale-105 transition-transform duration-200 shrink-0"
           >
-            <span className="font-extrabold text-lg tracking-tight text-indigo-500 dark:text-indigo-400 select-none">o2</span>
-            <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 rounded-full animate-pulse ${
-              isDark ? "border-[#161b22]" : "border-slate-50"
-            }`} />
+            <span className="font-semibold text-lg tracking-tighter text-indigo-500 dark:text-indigo-400 select-none">o2</span>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-background rounded-full animate-pulse" />
           </Link>
 
-          <div className={`w-8 h-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          <div className="w-8 h-px bg-border shrink-0" />
 
           {/* Navigation Items */}
-          <nav className="flex flex-col items-center gap-3 w-full px-2">
+          <nav className="flex flex-col items-center gap-2.5 w-full px-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -147,27 +141,23 @@ export default function SidebarNav() {
                       href={item.href}
                       className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative group shrink-0 ${
                         isActive
-                          ? isDark 
-                            ? "bg-slate-800 text-white shadow-inner scale-105 border-l-2 border-indigo-500"
-                            : "bg-slate-200 text-slate-900 shadow-sm scale-105 border-l-2 border-indigo-500"
-                          : isDark
-                            ? "hover:bg-slate-800 hover:text-slate-200"
-                            : "hover:bg-slate-200 hover:text-slate-800"
+                          ? "bg-accent text-foreground shadow-sm scale-105"
+                          : "hover:bg-accent/50 hover:text-foreground text-muted-foreground"
                       }`}
                     >
                       <Icon className={`h-5 w-5 ${
                         isActive 
                           ? item.color 
-                          : isDark ? "text-slate-400 group-hover:scale-110 transition-transform duration-200" : "text-slate-500 group-hover:scale-110 transition-transform duration-200"
+                          : "text-muted-foreground group-hover:scale-110 transition-transform duration-200"
                       }`} />
                       
-                      {/* Left border indicator */}
+                      {/* Left border active indicator */}
                       {isActive && (
-                        <div className="absolute left-0 w-1 h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r" />
+                        <div className="absolute left-0 w-0.5 h-4 bg-indigo-500 rounded-r" />
                       )}
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className={isDark ? "bg-slate-950 text-slate-200 border-slate-800" : "bg-white text-slate-700 border-slate-200"}>
+                  <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
                     <p className="text-xs font-semibold">{item.name}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -177,8 +167,8 @@ export default function SidebarNav() {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col items-center gap-3 w-full px-2 mt-auto pt-2 shrink-0">
-          <div className={`w-8 h-px ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+        <div className="flex flex-col items-center gap-2.5 w-full px-2 mt-auto pt-2 shrink-0">
+          <div className="w-8 h-px bg-border" />
 
           {/* GitHub Repo Link */}
           <Tooltip>
@@ -187,16 +177,12 @@ export default function SidebarNav() {
                 href="https://github.com/senapati484/code-editor"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
-                  isDark 
-                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" 
-                    : "text-slate-600 hover:text-slate-800 hover:bg-slate-200"
-                }`}
+                className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-accent/50 hover:text-foreground text-muted-foreground transition-colors"
               >
                 <Github className="h-5 w-5" />
               </a>
             </TooltipTrigger>
-            <TooltipContent side="right" className={isDark ? "bg-slate-950 text-slate-200 border-slate-800" : "bg-white text-slate-700 border-slate-200"}>
+            <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
               <p className="text-xs font-semibold">GitHub Repository</p>
             </TooltipContent>
           </Tooltip>
@@ -207,11 +193,7 @@ export default function SidebarNav() {
               <Button
                 variant="ghost"
                 size="icon"
-                className={`w-10 h-10 rounded-xl transition-colors ${
-                  isDark 
-                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" 
-                    : "text-slate-600 hover:text-slate-800 hover:bg-slate-200"
-                }`}
+                className="w-10 h-10 rounded-xl hover:bg-accent/50 hover:text-foreground text-muted-foreground transition-colors"
                 onClick={() => setTheme(isDark ? "light" : "dark")}
               >
                 {isDark ? (
@@ -221,7 +203,7 @@ export default function SidebarNav() {
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" className={isDark ? "bg-slate-950 text-slate-250 border-slate-800" : "bg-white text-slate-700 border-slate-200"}>
+            <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
               <p className="text-xs font-semibold">Toggle Theme</p>
             </TooltipContent>
           </Tooltip>
@@ -229,11 +211,7 @@ export default function SidebarNav() {
       </aside>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className={`mobile-nav-bar md:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-4 z-50 transition-colors duration-200 ${
-        isDark 
-          ? "bg-[#161b22]/95 border-slate-800" 
-          : "bg-slate-50/95 border-slate-200"
-      }`}>
+      <div className="mobile-nav-bar md:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-4 z-50 transition-colors duration-200 bg-background/95 border-border backdrop-blur-md">
         {navItems.slice(0, 5).map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -244,11 +222,11 @@ export default function SidebarNav() {
               href={item.href}
               className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg transition-all duration-200 relative ${
                 isActive 
-                  ? isDark ? "text-white scale-105" : "text-slate-900 scale-105" 
-                  : isDark ? "text-slate-400" : "text-slate-600"
+                  ? "text-foreground scale-105 font-bold" 
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className={`h-5 w-5 ${isActive ? item.color : isDark ? "text-slate-400" : "text-slate-600"}`} />
+              <Icon className={`h-5 w-5 ${isActive ? item.color : "text-muted-foreground"}`} />
               <span className="text-[10px] mt-0.5 truncate max-w-full font-medium">
                 {item.name.split(" ")[0]}
               </span>
@@ -262,9 +240,7 @@ export default function SidebarNav() {
         {/* Mobile Theme Toggle */}
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}
-          className={`flex flex-col items-center justify-center w-12 h-12 transition-colors ${
-            isDark ? "text-slate-400" : "text-slate-600"
-          }`}
+          className="flex flex-col items-center justify-center w-12 h-12 text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Toggle Theme"
         >
           {isDark ? (

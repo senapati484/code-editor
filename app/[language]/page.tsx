@@ -33,12 +33,14 @@ interface LangConfig {
   bgAccent: string;
   clientSide: boolean;
   template: string;
+  brandColor: string;
 }
 
 const LANGUAGES: Record<string, LangConfig> = {
   javascript: {
     id: "javascript", name: "JavaScript", filename: "main.js", extension: "js",
     color: "text-yellow-400", bgAccent: "bg-yellow-500/10 border-yellow-500/20",
+    brandColor: "#F7DF1E",
     clientSide: true,
     template: `// JavaScript — runs directly in your browser
 console.log("Hello, World!");
@@ -51,6 +53,7 @@ console.log(\`Hello, \${name}!\\n\`);
   typescript: {
     id: "typescript", name: "TypeScript", filename: "main.ts", extension: "ts",
     color: "text-blue-400", bgAccent: "bg-blue-500/10 border-blue-500/20",
+    brandColor: "#3178C6",
     clientSide: true,
     template: `// TypeScript — compiled in-browser via CDN
 interface User {
@@ -68,6 +71,7 @@ console.log(\`Hello, \${user.name}!\\n\`);
   python: {
     id: "python", name: "Python", filename: "main.py", extension: "py",
     color: "text-emerald-400", bgAccent: "bg-emerald-500/10 border-emerald-500/20",
+    brandColor: "#3776AB",
     clientSide: true,
     template: `# Python 3 — powered by Pyodide (WebAssembly)
 print("Hello, World!")
@@ -80,6 +84,7 @@ print(f"Hello, {name}!")
   c: {
     id: "c", name: "C", filename: "main.c", extension: "c",
     color: "text-indigo-400", bgAccent: "bg-indigo-500/10 border-indigo-500/20",
+    brandColor: "#A8B9CC",
     clientSide: false,
     template: `#include <stdio.h>
 
@@ -100,6 +105,7 @@ int main() {
   cpp: {
     id: "cpp", name: "C++", filename: "main.cpp", extension: "cpp",
     color: "text-cyan-400", bgAccent: "bg-cyan-500/10 border-cyan-500/20",
+    brandColor: "#00599C",
     clientSide: false,
     template: `#include <iostream>
 #include <string>
@@ -120,6 +126,7 @@ int main() {
   java: {
     id: "java", name: "Java", filename: "Main.java", extension: "java",
     color: "text-rose-400", bgAccent: "bg-rose-500/10 border-rose-500/20",
+    brandColor: "#E76F51",
     clientSide: false,
     template: `import java.util.Scanner;
 
@@ -140,6 +147,7 @@ public class Main {
   rust: {
     id: "rust", name: "Rust", filename: "main.rs", extension: "rs",
     color: "text-orange-400", bgAccent: "bg-orange-500/10 border-orange-500/20",
+    brandColor: "#E05D2B",
     clientSide: false,
     template: `use std::io::{self, Write};
 
@@ -161,6 +169,7 @@ fn main() {
   go: {
     id: "go", name: "Go", filename: "main.go", extension: "go",
     color: "text-sky-400", bgAccent: "bg-sky-500/10 border-sky-500/20",
+    brandColor: "#00ADD8",
     clientSide: false,
     template: `package main
 
@@ -182,6 +191,7 @@ func main() {
   ruby: {
     id: "ruby", name: "Ruby", filename: "main.rb", extension: "rb",
     color: "text-red-400", bgAccent: "bg-red-500/10 border-red-500/20",
+    brandColor: "#CC342D",
     clientSide: false,
     template: `puts "Hello, World!"
 
@@ -194,6 +204,7 @@ puts "Hello, #{name}!"
   php: {
     id: "php", name: "PHP", filename: "main.php", extension: "php",
     color: "text-violet-400", bgAccent: "bg-violet-500/10 border-violet-500/20",
+    brandColor: "#777BB4",
     clientSide: false,
     template: `<?php
 echo "Hello, World!\\n";
@@ -207,6 +218,7 @@ echo "Hello, " . trim($name) . "!\\n";
   sql: {
     id: "sql", name: "SQL (SQLite)", filename: "query.sql", extension: "sql",
     color: "text-[#00758F]", bgAccent: "bg-[#00758F]/10 border-[#00758F]/20",
+    brandColor: "#00758F",
     clientSide: true,
     template: `-- SQL Online Editor (SQLite WebAssembly)
 
@@ -834,22 +846,18 @@ function PlaygroundContent({ language }: { language: string }) {
   }[status];
 
   return (
-    <div className={`flex w-full max-w-full overflow-x-hidden min-h-screen ${isDark ? "bg-[#0d1117] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200`}>
+    <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
       <SidebarNav />
 
       <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
 
         {/* ── Top toolbar ─────────────────────────────────────────────── */}
-        <header className={`flex items-center justify-between px-3 md:px-4 py-2 border-b shrink-0 ${
-          isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
-        }`}>
+        <header className="flex items-center justify-between px-3 md:px-4 py-2.5 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
           {/* Left: back + interactive lang selector */}
-          <div className="flex items-center gap-1.5 md:gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <Link
               href="/"
-              className={`flex items-center gap-1 text-xs font-medium px-1.5 md:px-2 py-1 rounded-md transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               <span className="hidden xs:inline">Back</span>
@@ -859,22 +867,20 @@ function PlaygroundContent({ language }: { language: string }) {
             <div className="relative">
               <button
                 onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border hover:opacity-85 transition-all shadow-sm cursor-pointer ${langConfig.bgAccent}`}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-border bg-card hover:bg-accent hover:text-accent-foreground transition-all shadow-sm cursor-pointer"
               >
-                <span className={langConfig.color}>●</span>
-                <span className={`${isDark ? "text-slate-200" : "text-slate-700"}`}>{langConfig.name}</span>
-                <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>{langConfig.filename}</span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+                <span style={{ color: langConfig.brandColor }}>●</span>
+                <span className="text-foreground">{langConfig.name}</span>
+                <span className="hidden sm:inline text-[10px] text-muted-foreground font-mono">{langConfig.filename}</span>
+                <ChevronDown className="h-3 w-3 opacity-55" />
               </button>
 
               {isLangDropdownOpen && (
                 <>
                   {/* Backdrop to close the dropdown when clicking outside */}
                   <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
-                  <div className={`absolute left-0 mt-2 w-48 rounded-xl border shadow-xl z-50 py-1.5 overflow-hidden focus:outline-none ${
-                    isDark ? "bg-[#161b22] border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-700"
-                  }`}>
-                    <div className="px-3 py-1 text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider border-b border-slate-800/10 dark:border-slate-800/30 mb-1.5">
+                  <div className="absolute left-0 mt-2 w-48 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg z-50 py-1.5 overflow-hidden">
+                    <div className="px-3 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border/40 mb-1">
                       Switch Language
                     </div>
                     <div className="max-h-[300px] overflow-y-auto no-scrollbar">
@@ -885,13 +891,13 @@ function PlaygroundContent({ language }: { language: string }) {
                             key={key}
                             href={key === "html" ? "/html" : `/${key}`}
                             onClick={() => setIsLangDropdownOpen(false)}
-                            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-indigo-500 hover:text-white transition-colors w-full text-left ${
-                              isCurrent ? (isDark ? "bg-slate-800 text-white font-bold" : "bg-slate-100 text-slate-900 font-bold") : ""
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors w-full text-left ${
+                              isCurrent ? "bg-accent/60 text-foreground font-semibold" : "text-muted-foreground"
                             }`}
                           >
-                            <span className={cfg.color}>●</span>
+                            <span style={{ color: cfg.brandColor }}>●</span>
                             <span>{cfg.name}</span>
-                            {isCurrent && <span className="ml-auto text-[10px] opacity-60">Active</span>}
+                            {isCurrent && <span className="ml-auto text-[9px] text-muted-foreground opacity-60">Active</span>}
                           </Link>
                         );
                       })}
@@ -901,21 +907,19 @@ function PlaygroundContent({ language }: { language: string }) {
               )}
             </div>
 
-            <span className={`hidden sm:inline text-[11px] px-2 py-0.5 rounded border font-mono ${
-              isDark ? "text-slate-500 border-slate-800 bg-slate-900" : "text-slate-400 border-slate-200 bg-slate-50"
-            }`}>
-              {langConfig.clientSide ? "Browser ✦" : "Server ☁"}
+            <span className="hidden sm:inline text-[10px] px-2 py-0.5 rounded border border-border bg-accent text-muted-foreground font-mono font-medium">
+              {langConfig.clientSide ? "Browser Runtimes" : "Server Runtimes"}
             </span>
           </div>
 
           {/* Center/Right: Mobile Tab Switcher */}
-          <div className="flex md:hidden items-center border rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex md:hidden items-center border rounded-lg p-0.5 bg-accent border-border shrink-0">
             <button
               onClick={() => setActiveTab("editor")}
               className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
                 activeTab === "editor"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-500 dark:text-slate-400"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground"
               }`}
             >
               Code
@@ -924,8 +928,8 @@ function PlaygroundContent({ language }: { language: string }) {
               onClick={() => setActiveTab("output")}
               className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
                 activeTab === "output"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-500 dark:text-slate-400"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground"
               }`}
             >
               Output
@@ -935,9 +939,9 @@ function PlaygroundContent({ language }: { language: string }) {
           {/* Right: status + actions */}
           <div className="flex items-center gap-1.5 md:gap-2">
             {status !== "idle" && (
-              <div className={`hidden sm:flex items-center gap-1.5 text-xs font-medium ${statusColor}`}>
+              <div className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold ${statusColor}`}>
                 {StatusIcon}
-                {statusText}
+                <span>{statusText}</span>
               </div>
             )}
 
@@ -945,9 +949,7 @@ function PlaygroundContent({ language }: { language: string }) {
               href="https://github.com/senapati484/code-editor"
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="GitHub Repository"
             >
               <Github className="h-3.5 w-3.5" />
@@ -956,9 +958,7 @@ function PlaygroundContent({ language }: { language: string }) {
 
             <button
               onClick={handleReset}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Reset to template"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -967,42 +967,38 @@ function PlaygroundContent({ language }: { language: string }) {
 
             <button
               onClick={handleDownload}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Download file"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Save</span>
             </button>
 
-            <div className={`hidden sm:block w-px h-5 mx-1 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div className="hidden sm:block w-px h-4 mx-1 bg-border" />
 
             <button
               onClick={handleRun}
               disabled={status === "running"}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center gap-1.5 md:gap-2 px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               title="Run (Ctrl+Enter)"
             >
               {status === "running"
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Play className="h-3.5 w-3.5" />
+                : <Play className="h-3.5 w-3.5 fill-current" />
               }
-              <span className="hidden xs:inline">{status === "running" ? "Running…" : "Run"}</span>
+              <span className="hidden xs:inline">{status === "running" ? "Running" : "Run"}</span>
               <span className="inline xs:hidden">{status === "running" ? "…" : "Run"}</span>
             </button>
           </div>
         </header>
 
         {/* ── Editor + Output split ───────────────────────────────────── */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
 
           {/* Code Editor */}
           <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden md:flex"}`}>
-            <div className={`flex items-center px-4 py-1.5 text-[11px] font-mono border-b shrink-0 ${
-              isDark ? "bg-[#161b22] border-slate-800 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-400"
-            }`}>
-              <span className={langConfig.color}>◆</span>
+            <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+              <span style={{ color: langConfig.brandColor }}>◆</span>
               <span className="ml-1.5">{langConfig.filename}</span>
             </div>
             <div className="flex-1 overflow-hidden p-0">
@@ -1020,49 +1016,43 @@ function PlaygroundContent({ language }: { language: string }) {
           </div>
 
           {/* Divider */}
-          <div className={`hidden md:block w-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          <div className="hidden md:block w-px shrink-0 bg-border" />
 
           {/* Output Terminal */}
           <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "output" ? "flex" : "hidden md:flex"}`}>
             {/* Output header */}
-            <div className={`flex items-center justify-between px-4 py-1.5 border-b shrink-0 ${
-              isDark ? "bg-[#161b22] border-slate-800" : "bg-slate-50 border-slate-200"
-            }`}>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
               <div className="flex items-center gap-1.5">
-                <Terminal className={`h-3.5 w-3.5 ${isDark ? "text-slate-500" : "text-slate-400"}`} />
-                <span className={`text-[11px] font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                   Output
                 </span>
                 {status === "running" && (
-                  <span className="flex items-center gap-1 ml-1 text-[10px] text-blue-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block" />
+                  <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
                     Running
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1">
                 {interactiveMode && (
-                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                     Waiting for input
                   </span>
                 )}
                 <button
                   onClick={handleCopyOutput}
                   disabled={!output || status === "running"}
-                  className={`p-1.5 rounded-md transition-colors disabled:opacity-40 ${
-                    isDark ? "text-slate-500 hover:text-slate-300 hover:bg-slate-800" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                  }`}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
                   title="Copy output"
                 >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
                 <button
                   onClick={() => { setOutput(""); setStatus("idle"); }}
                   disabled={!output}
-                  className={`p-1.5 rounded-md transition-colors disabled:opacity-40 ${
-                    isDark ? "text-slate-500 hover:text-slate-300 hover:bg-slate-800" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                  }`}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
                   title="Clear output"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -1072,23 +1062,21 @@ function PlaygroundContent({ language }: { language: string }) {
 
             {/* Output / Interactive Terminal */}
             <div
-              className={`flex-1 overflow-auto p-4 font-mono text-sm leading-relaxed cursor-text ${
-                isDark ? "bg-[#0d1117] text-slate-300" : "bg-white text-slate-700"
-              }`}
+              className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
               style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
               onClick={() => interactiveInputRef.current?.focus()}
             >
               {!output && !interactiveMode ? (
                 <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
-                  <Terminal className="h-10 w-10" />
-                  <p className="text-sm">Press <kbd className="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded text-xs font-sans">Ctrl+Enter</kbd> to run</p>
+                  <Terminal className="h-8 w-8" />
+                  <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
                 </div>
               ) : (
                 <div
                   className={
                     status === "error" && !interactiveMode
-                      ? "text-rose-400"
-                      : isDark ? "text-slate-200" : "text-slate-800"
+                      ? "text-rose-500 dark:text-rose-400"
+                      : "text-foreground"
                   }
                   style={{ whiteSpace: "pre-wrap" }}
                 >
@@ -1112,18 +1100,14 @@ function PlaygroundContent({ language }: { language: string }) {
                         spellCheck={false}
                         autoComplete="off"
                         autoCorrect="off"
-                        className={`bg-transparent border-none outline-none font-mono text-sm ${
-                          isDark ? "text-emerald-400 caret-emerald-400" : "text-emerald-700 caret-emerald-700"
-                        }`}
+                        className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
                         style={{
                           width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
                           minWidth: "2ch",
                         }}
                       />
                       <span
-                        className={`inline-block w-[0.55em] h-[1em] align-middle animate-pulse ${
-                          isDark ? "bg-emerald-400" : "bg-emerald-600"
-                        }`}
+                        className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
                         style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
                       />
                     </span>
@@ -1135,18 +1119,10 @@ function PlaygroundContent({ language }: { language: string }) {
 
             {/* Interactive hint bar — only shown when waiting for input */}
             {interactiveMode && (
-              <div className={`border-t px-4 py-2 flex items-center gap-2 shrink-0 ${
-                isDark
-                  ? "border-emerald-900/60 bg-emerald-950/30"
-                  : "border-emerald-200 bg-emerald-50"
-              }`}>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span className={`text-[11px] font-medium ${
-                  isDark ? "text-emerald-400" : "text-emerald-700"
-                }`}>
-                  Your program is waiting for input — type above and press <kbd className={`px-1 py-0.5 rounded text-[10px] font-sans ${
-                    isDark ? "bg-emerald-900 text-emerald-300" : "bg-emerald-100 text-emerald-800"
-                  }`}>Enter</kbd>
+              <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-[10px] font-semibold text-emerald-500">
+                  Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
                 </span>
                 <button
                   onClick={() => {
@@ -1154,9 +1130,7 @@ function PlaygroundContent({ language }: { language: string }) {
                     setStatus("error");
                     setOutput(prev => prev + "\n[Terminated]");
                   }}
-                  className={`ml-auto text-[10px] font-medium transition-colors ${
-                    isDark ? "text-slate-500 hover:text-red-400" : "text-slate-400 hover:text-red-500"
-                  }`}
+                  className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
                 >
                   Kill
                 </button>

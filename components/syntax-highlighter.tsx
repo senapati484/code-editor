@@ -387,7 +387,7 @@ export default function SyntaxHighlighter({
       }}>
         {lines.map((_, i) => (
           <div key={i} style={{
-            color: theme === "dark" ? "#4B5563" : "#D1D5DB",
+            color: theme === "dark" ? "#52525b" : "#a1a1aa",
             userSelect: "none", textAlign: "right",
             paddingRight: isMobile ? "8px" : "12px",
             minWidth: isMobile ? "2.5rem" : "3rem",
@@ -414,19 +414,16 @@ export default function SyntaxHighlighter({
     .map(([token, color]) => `.se-token.se-${token}{color:${color}!important}`)
     .join("\n")
 
-  const baseColor = theme === "dark" ? "#E2E8F0" : "#1E293B"
-  const bgColor = theme === "dark" ? "#111827" : "#FFFFFF"
+  const baseColor = theme === "dark" ? "#f4f4f5" : "#18181b"
+  const bgColor = theme === "dark" ? "#09090b" : "#ffffff"
+  const borderColor = theme === "dark" ? "#27272a" : "#e4e4e7"
 
   const highlightedHtml = tokenizeCode(code, language)
 
   return (
     <div
       ref={containerRef}
-      className={`relative font-mono ${className} overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-        isFocused
-          ? theme === "dark" ? "border-blue-500 shadow-lg shadow-blue-500/20" : "border-blue-500 shadow-lg shadow-blue-500/10"
-          : theme === "dark" ? "border-gray-700" : "border-gray-300"
-      }`}
+      className={`relative font-mono ${className} overflow-hidden transition-all duration-200`}
       style={{ backgroundColor: bgColor, height: "100%", display: "flex", flexDirection: "column" }}
     >
       <style dangerouslySetInnerHTML={{ __html: cssRules }} />
@@ -437,8 +434,8 @@ export default function SyntaxHighlighter({
             ref={lineNumbersRef}
             className="flex-shrink-0 border-r"
             style={{
-              borderColor: theme === "dark" ? "#374151" : "#E5E7EB",
-              backgroundColor: theme === "dark" ? "#0D1117" : "#F9FAFB",
+              borderColor: borderColor,
+              backgroundColor: bgColor,
               overflow: "hidden",
               width: isMobile ? "3rem" : "4rem",
             }}
@@ -484,7 +481,7 @@ export default function SyntaxHighlighter({
               margin: 0, border: 0, overflow: "auto",
               height: "100%", width: "100%", boxSizing: "border-box", tabSize: 2,
               color: "transparent",
-              caretColor: theme === "dark" ? "#60A5FA" : "#2563EB",
+              caretColor: theme === "dark" ? "#818cf8" : "#4f46e5",
               backgroundColor: "transparent",
               position: "relative", zIndex: 1,
             }}
@@ -496,14 +493,9 @@ export default function SyntaxHighlighter({
 
       {isFocused && (
         <div
-          className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium shadow-md z-10"
-          style={{
-            backgroundColor: theme === "dark" ? "#1F2937" : "#F3F4F6",
-            color: theme === "dark" ? "#60A5FA" : "#2563EB",
-            border: `1px solid ${theme === "dark" ? "#374151" : "#E5E7EB"}`,
-          }}
+          className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider shadow-sm z-10 border border-border bg-accent text-muted-foreground uppercase"
         >
-          {language.toUpperCase()}
+          {language}
         </div>
       )}
     </div>

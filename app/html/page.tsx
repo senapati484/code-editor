@@ -281,21 +281,17 @@ function HtmlSandboxContent() {
   const fileDot   = { html: "text-orange-400", css: "text-blue-400", js: "text-yellow-400" };
 
   return (
-    <div className={`flex w-full max-w-full overflow-x-hidden min-h-screen ${isDark ? "bg-[#0d1117] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200`}>
+    <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
       <SidebarNav />
 
       <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
 
         {/* ── Toolbar ──────────────────────────────────────────────── */}
-        <header className={`flex items-center justify-between px-3 md:px-4 py-2 border-b shrink-0 ${
-          isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
-        }`}>
+        <header className="flex items-center justify-between px-3 md:px-4 py-2.5 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-1.5 md:gap-3">
             <Link
               href="/"
-              className={`flex items-center gap-1 text-xs font-medium px-1.5 md:px-2 py-1 rounded-md transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               <span className="hidden xs:inline">Back</span>
@@ -305,22 +301,20 @@ function HtmlSandboxContent() {
             <div className="relative">
               <button
                 onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border hover:opacity-85 transition-all shadow-sm cursor-pointer bg-orange-500/10 border-orange-500/20"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-border bg-card hover:bg-accent hover:text-accent-foreground transition-all shadow-sm cursor-pointer"
               >
                 <Globe className="h-3.5 w-3.5 text-orange-400" />
-                <span className={isDark ? "text-slate-200" : "text-slate-700"}>Web Sandbox</span>
-                <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>HTML · CSS · JS</span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+                <span>Web Sandbox</span>
+                <span className="hidden sm:inline text-[10px] text-muted-foreground font-mono">HTML · CSS · JS</span>
+                <ChevronDown className="h-3 w-3 opacity-55" />
               </button>
 
               {isLangDropdownOpen && (
                 <>
                   {/* Backdrop to close the dropdown when clicking outside */}
                   <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
-                  <div className={`absolute left-0 mt-2 w-48 rounded-xl border shadow-xl z-50 py-1.5 overflow-hidden focus:outline-none ${
-                    isDark ? "bg-[#161b22] border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-700"
-                  }`}>
-                    <div className="px-3 py-1 text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider border-b border-slate-800/10 dark:border-slate-800/30 mb-1.5">
+                  <div className="absolute left-0 mt-2 w-48 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg z-50 py-1.5 overflow-hidden">
+                    <div className="px-3 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border/40 mb-1">
                       Switch Language
                     </div>
                     <div className="max-h-[300px] overflow-y-auto no-scrollbar">
@@ -331,13 +325,13 @@ function HtmlSandboxContent() {
                             key={cfg.id}
                             href={cfg.id === "html" ? "/html" : `/${cfg.id}`}
                             onClick={() => setIsLangDropdownOpen(false)}
-                            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-indigo-500 hover:text-white transition-colors w-full text-left ${
-                              isCurrent ? (isDark ? "bg-slate-800 text-white font-bold" : "bg-slate-100 text-slate-900 font-bold") : ""
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors w-full text-left ${
+                              isCurrent ? "bg-accent/60 text-foreground font-semibold" : "text-muted-foreground"
                             }`}
                           >
                             <span className={cfg.color}>●</span>
                             <span>{cfg.name}</span>
-                            {isCurrent && <span className="ml-auto text-[10px] opacity-60">Active</span>}
+                            {isCurrent && <span className="ml-auto text-[9px] text-muted-foreground opacity-60">Active</span>}
                           </Link>
                         );
                       })}
@@ -349,13 +343,13 @@ function HtmlSandboxContent() {
           </div>
 
           {/* Mobile View Toggle (Editor vs Preview) */}
-          <div className="flex md:hidden items-center border rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex md:hidden items-center border rounded-lg p-0.5 bg-accent border-border shrink-0">
             <button
               onClick={() => setActiveTab("editor")}
               className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
                 activeTab === "editor"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-500 dark:text-slate-400"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground"
               }`}
             >
               Code
@@ -367,8 +361,8 @@ function HtmlSandboxContent() {
               }}
               className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
                 activeTab === "preview"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-500 dark:text-slate-400"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground"
               }`}
             >
               Preview
@@ -380,9 +374,7 @@ function HtmlSandboxContent() {
               href="https://github.com/senapati484/code-editor"
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="GitHub Repository"
             >
               <Github className="h-3.5 w-3.5" />
@@ -391,9 +383,7 @@ function HtmlSandboxContent() {
 
             <button
               onClick={handleReset}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Reset to template"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -401,52 +391,41 @@ function HtmlSandboxContent() {
             </button>
             <button
               onClick={handleDownload}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Download file"
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Download</span>
+              <span className="hidden sm:inline">Save</span>
             </button>
-            <div className={`hidden sm:block w-px h-5 mx-1 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+            <div className="hidden sm:block w-px h-4 mx-1 bg-border" />
             <button
               onClick={() => {
                 buildPreview(true);
                 setActiveTab("preview");
               }}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
+              className="flex items-center gap-1.5 md:gap-2 px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
             >
-              <Play className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Run</span>
-              <span className="inline xs:hidden">Run</span>
+              <Play className="h-3.5 w-3.5 fill-current" />
+              <span className="font-semibold">Run</span>
             </button>
           </div>
         </header>
 
         {/* ── 3-column workspace: file list | editor | preview ─────── */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden bg-background">
 
           {/* File list (narrow sidebar) - hidden on mobile */}
-          <div className={`hidden md:flex w-36 shrink-0 flex-col border-r py-3 px-2 gap-1 ${
-            isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
-          }`}>
-            <span className={`text-[10px] font-bold tracking-widest uppercase px-2 mb-1 ${
-              isDark ? "text-slate-500" : "text-slate-400"
-            }`}>Files</span>
+          <div className="hidden md:flex w-36 shrink-0 flex-col border-r border-border py-4 px-2.5 gap-1 bg-background">
+            <span className="text-[10px] font-bold tracking-widest uppercase px-2 mb-2 text-muted-foreground">Files</span>
 
             {(["html", "css", "js"] as ActiveFile[]).map(ft => (
               <button
                 key={ft}
                 onClick={() => setActiveFile(ft)}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors text-left ${
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors text-left border ${
                   activeFile === ft
-                    ? isDark
-                      ? "bg-slate-800 text-slate-100 border border-slate-700"
-                      : "bg-slate-100 text-slate-900 border border-slate-200"
-                    : isDark
-                    ? "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
-                    : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                    ? "bg-accent text-foreground border-border shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40 border-transparent"
                 }`}
               >
                 <FileCode className={`h-3.5 w-3.5 shrink-0 ${activeFile === ft ? fileDot[ft] : ""}`} />
@@ -458,15 +437,15 @@ function HtmlSandboxContent() {
           {/* Code editor */}
           <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden md:flex"}`}>
             {/* Horizontal File Tabs for Mobile */}
-            <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-background border-border">
               {(["html", "css", "js"] as ActiveFile[]).map(ft => (
                 <button
                   key={ft}
                   onClick={() => setActiveFile(ft)}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold border transition-all ${
                     activeFile === ft
-                      ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                      : "bg-transparent text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-transparent text-muted-foreground border-border"
                   }`}
                 >
                   <FileCode className="h-3.5 w-3.5" />
@@ -475,9 +454,7 @@ function HtmlSandboxContent() {
               ))}
             </div>
 
-            <div className={`flex items-center px-4 py-1.5 text-[11px] font-mono border-b shrink-0 ${
-              isDark ? "bg-[#161b22] border-slate-800 text-slate-500" : "bg-slate-50 border-slate-200 text-slate-400"
-            }`}>
+            <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
               <span className={fileDot[activeFile]}>◆</span>
               <span className="ml-1.5">{fileLabel[activeFile]}</span>
             </div>
@@ -497,26 +474,22 @@ function HtmlSandboxContent() {
           </div>
 
           {/* Divider */}
-          <div className={`hidden md:block w-px shrink-0 ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+          <div className="hidden md:block w-px shrink-0 bg-border" />
 
           {/* Preview panel */}
           <div className={`flex-1 flex flex-col overflow-hidden min-w-0 relative ${activeTab === "preview" ? "flex" : "hidden md:flex"}`}>
-            <div className={`flex items-center justify-between px-4 py-1.5 border-b shrink-0 ${
-              isDark ? "bg-[#161b22] border-slate-800" : "bg-slate-50 border-slate-200"
-            }`}>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
               <div className="flex items-center gap-1.5">
-                <Monitor className={`h-3.5 w-3.5 ${isDark ? "text-slate-500" : "text-slate-400"}`} />
-                <span className={`text-[11px] font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>Preview</span>
+                <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
               </div>
               {/* Console toggle */}
               <button
                 onClick={() => setConsoleOpen(o => !o)}
-                className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md transition-colors ${
-                  isDark ? "text-slate-400 hover:bg-slate-800" : "text-slate-500 hover:bg-slate-100"
-                }`}
+                className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <Terminal className="h-3 w-3 text-orange-400" />
-                Console ({logs.length})
+                <span>Console ({logs.length})</span>
                 {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
               </button>
             </div>
@@ -534,25 +507,23 @@ function HtmlSandboxContent() {
 
             {/* Console drawer */}
             {consoleOpen && (
-              <div className={`border-t h-48 flex flex-col shrink-0 ${
-                isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
-              }`}>
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
-                  <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+              <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Terminal className="h-3 w-3 text-orange-400" />
                     Console Output
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setLogs([])}
-                      className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                      className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                       title="Clear logs"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => setConsoleOpen(false)}
-                      className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                      className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     >
                       <ChevronDown className="h-3 w-3" />
                     </button>
@@ -560,17 +531,17 @@ function HtmlSandboxContent() {
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
                   {logs.length === 0 ? (
-                    <div className="text-slate-600 text-center py-4">No console output yet</div>
+                    <div className="text-muted-foreground text-center py-4">No console output yet</div>
                   ) : (
                     logs.map((log, i) => (
                       <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
                         log.type === "error"
-                          ? "text-rose-400 bg-rose-500/5"
+                          ? "text-rose-500 bg-rose-500/5"
                           : log.type === "warn"
-                          ? "text-amber-400 bg-amber-500/5"
-                          : "text-sky-300"
+                          ? "text-amber-500 bg-amber-500/5"
+                          : "text-sky-500 dark:text-sky-300"
                       }`}>
-                        <span className="text-slate-600 shrink-0">[{log.time}]</span>
+                        <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
                         <span className="whitespace-pre-wrap break-all">{log.msg}</span>
                       </div>
                     ))
