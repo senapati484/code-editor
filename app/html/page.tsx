@@ -155,6 +155,7 @@ const LANGUAGES = [
   { id: "go", name: "Go", color: "text-[#00ADD8]", bgAccent: "bg-sky-500/10 border-sky-500/20" },
   { id: "ruby", name: "Ruby", color: "text-[#CC342D]", bgAccent: "bg-red-500/10 border-red-500/20" },
   { id: "php", name: "PHP", color: "text-[#777BB4]", bgAccent: "bg-violet-500/10 border-violet-500/20" },
+  { id: "sql", name: "SQL (SQLite)", color: "text-[#00758F]", bgAccent: "bg-[#00758F]/10 border-[#00758F]/20" },
 ];
 
 // ─── Component ──────────────────────────────────────────────────────────────

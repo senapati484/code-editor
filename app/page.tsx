@@ -5,7 +5,7 @@ import Link from "next/link";
 import SidebarNav from "@/components/sidebar-nav";
 import { useSettings } from "@/contexts/settings-context";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, Github } from "lucide-react";
+import { ArrowRight, Github, Database } from "lucide-react";
 import { FaHtml5, FaJava } from "react-icons/fa";
 import { FaGolang } from "react-icons/fa6";
 import {
@@ -116,6 +116,14 @@ const PLAYGROUNDS: CompilerCard[] = [
     runtime: "PHP Engine",
     icon: SiPhp,
     color: "text-[#777BB4]",
+  },
+  {
+    name: "SQL (SQLite)",
+    id: "sql",
+    category: "Database",
+    runtime: "SQLite WASM",
+    icon: Database,
+    color: "text-[#00758F]",
   },
 ];
 

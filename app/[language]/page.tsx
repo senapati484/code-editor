@@ -204,6 +204,30 @@ $name = readline();
 echo "Hello, " . trim($name) . "!\\n";
 `,
   },
+  sql: {
+    id: "sql", name: "SQL (SQLite)", filename: "query.sql", extension: "sql",
+    color: "text-[#00758F]", bgAccent: "bg-[#00758F]/10 border-[#00758F]/20",
+    clientSide: true,
+    template: `-- SQL Online Editor (SQLite WebAssembly)
+
+-- Create a sample table
+CREATE TABLE IF NOT EXISTS Users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    country TEXT
+);
+
+-- Insert sample records
+INSERT INTO Users (name, email, country) VALUES
+('Alice Smith', 'alice@example.com', 'USA'),
+('Bob Jones', 'bob@example.com', 'UK'),
+('Charlie Brown', 'charlie@example.com', 'Canada');
+
+-- Select and view all records
+SELECT * FROM Users;
+`,
+  },
 };
 
 // ─── Interactive terminal marker ───────────────────────────────────────────
@@ -397,6 +421,100 @@ async function runPython(code: string, stdin: string = ""): Promise<ExecutionRes
   };
 }
 
+// ─── SQL via sql.js (WebAssembly SQLite) ───────────────────────────────────
+
+function formatSqlResults(results: any[]): string {
+  if (!results || results.length === 0) {
+    return "Query executed successfully. (No rows returned)";
+  }
+
+  return results.map(result => {
+    const { columns, values } = result;
+    if (!columns || columns.length === 0) return "Query executed successfully.";
+
+    // Calculate column widths
+    const colWidths = columns.map((col: string) => col.length);
+    values.forEach((row: any[]) => {
+      row.forEach((val: any, colIdx: number) => {
+        const strVal = val === null ? "NULL" : String(val);
+        if (strVal.length > colWidths[colIdx]) {
+          colWidths[colIdx] = strVal.length;
+        }
+      });
+    });
+
+    // Build horizontal divider line
+    const divider = "+" + colWidths.map((w: number) => "-".repeat(w + 2)).join("+") + "+";
+
+    // Build header row
+    const headerRow = "|" + columns.map((col: string, idx: number) => {
+      return " " + col.padEnd(colWidths[idx]) + " ";
+    }).join("|") + "|";
+
+    // Build value rows
+    const valueRows = values.map((row: any[]) => {
+      return "|" + row.map((val, idx) => {
+        const strVal = val === null ? "NULL" : String(val);
+        return " " + strVal.padEnd(colWidths[idx]) + " ";
+      }).join("|") + "|";
+    }).join("\n");
+
+    return [divider, headerRow, divider, valueRows, divider].filter(Boolean).join("\n");
+  }).join("\n\n");
+}
+
+let sqlInstance: any = null;
+let sqlLoading: Promise<any> | null = null;
+
+async function loadSQL(): Promise<any> {
+  if (sqlInstance) return sqlInstance;
+  if (sqlLoading)   return sqlLoading;
+
+  sqlLoading = new Promise<any>((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js";
+    s.onload = () => {
+      sqlInstance = (window as any).initSqlJs;
+      sqlLoading = null;
+      resolve(sqlInstance);
+    };
+    s.onerror = () => {
+      sqlLoading = null;
+      reject(new Error("Failed to load SQLite WebAssembly library"));
+    };
+    document.head.appendChild(s);
+  });
+  return sqlLoading;
+}
+
+async function runSQLAsync(code: string): Promise<ExecutionResult> {
+  try {
+    const initSqlJs = await loadSQL();
+    const config = {
+      locateFile: (file: string) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/${file}`
+    };
+    const SQL = await initSqlJs(config);
+    const db = new SQL.Database();
+    
+    // Execute all SQL statements
+    const results = db.exec(code);
+    const stdout = formatSqlResults(results);
+    db.close();
+
+    return {
+      stdout,
+      stderr: "",
+      hasMarker: false,
+    };
+  } catch (err: any) {
+    return {
+      stdout: "",
+      stderr: err.message || String(err),
+      hasMarker: false,
+    };
+  }
+}
+
 // ─── Server-side compilation ───────────────────────────────────────────────
 
 async function runServer(code: string, langKey: string, stdin: string = ""): Promise<ExecutionResult> {
@@ -583,6 +701,8 @@ function PlaygroundContent({ language }: { language: string }) {
         runRes = await runTypeScript(code, stdinStr);
       } else if (langKey === "python") {
         runRes = await runPython(code, stdinStr);
+      } else if (langKey === "sql") {
+        runRes = await runSQLAsync(code);
       } else {
         runRes = await runServer(code, langKey, stdinStr);
       }
@@ -655,6 +775,8 @@ function PlaygroundContent({ language }: { language: string }) {
       setOutput("Loading Python runtime (first run may take ~30s)...\n");
     } else if (langKey === "typescript") {
       setOutput("Compiling TypeScript...\n");
+    } else if (langKey === "sql") {
+      setOutput("Initializing SQLite WebAssembly...\n");
     } else if (!LANGUAGES[langKey]?.clientSide) {
       setOutput("Connecting to compiler...\n");
     } else {

@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   Github,
+  Database,
 } from "lucide-react";
 import { FaHtml5, FaJava } from "react-icons/fa";
 import { FaGolang } from "react-icons/fa6";
@@ -100,6 +101,12 @@ export default function SidebarNav() {
       icon: SiPhp,
       href: "/php",
       color: "text-[#777BB4]",
+    },
+    {
+      name: "SQL",
+      icon: Database,
+      href: "/sql",
+      color: "text-[#00758F]",
     },
   ];
 
