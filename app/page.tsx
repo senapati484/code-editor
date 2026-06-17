@@ -153,31 +153,35 @@ export default function DashboardPage() {
           </a>
         </header>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
           {PLAYGROUNDS.map((p) => {
             const Icon = p.icon;
             const href = p.id === "html" ? "/html" : `/${p.id}`;
 
             return (
               <Link href={href} key={p.id} className="group block">
-                <Card className={`p-4 flex flex-col h-full justify-between transition-all border duration-150 ${
+                <Card className={`p-5 flex flex-col h-full justify-between transition-all border duration-250 hover:-translate-y-0.5 hover:shadow-md ${
                   isDark
-                    ? "bg-[#161b22] border-slate-800 hover:border-slate-700 hover:bg-[#1f242c]"
-                    : "bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/60"
+                    ? "bg-[#161b22] border-slate-800 hover:border-indigo-500/30 hover:bg-[#1a2029]"
+                    : "bg-slate-50 border-slate-200 hover:border-indigo-500/30 hover:bg-slate-100/60"
                 }`}>
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2 rounded-lg border w-9 h-9 flex items-center justify-center shrink-0 ${
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`p-2 rounded-xl border w-10 h-10 flex items-center justify-center shrink-0 ${
                         isDark ? "bg-[#0d1117] border-slate-800" : "bg-white border-slate-200"
                       }`}>
-                        <Icon className={`h-5 w-5 ${p.color}`} />
+                        <Icon className={`h-5.5 w-5.5 ${p.color}`} />
                       </div>
-                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                        isDark 
+                          ? "bg-slate-900/60 border-slate-800/80 text-slate-400" 
+                          : "bg-slate-100 border-slate-200 text-slate-500"
+                      }`}>
                         {p.runtime}
                       </span>
                     </div>
 
-                    <h3 className="text-sm font-bold tracking-tight mb-1 text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <h3 className="text-sm font-bold tracking-tight mb-1 text-slate-800 dark:text-slate-100 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
                       {p.name}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -185,9 +189,9 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 mt-4 transition-colors">
-                    <span>Open Sandbox</span>
-                    <ArrowRight className="h-3 w-3" />
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 mt-5 transition-colors">
+                    <span>Start Coding</span>
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 duration-150" />
                   </div>
                 </Card>
               </Link>
