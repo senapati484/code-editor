@@ -148,9 +148,9 @@ export default function DashboardPage() {
     <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
       <SidebarNav />
 
-      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-y-auto p-6 md:p-10 pb-24 md:pb-10 max-w-5xl mx-auto w-full">
+      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-y-auto px-6 md:px-10 pb-24 md:pb-10 max-w-5xl mx-auto w-full no-scrollbar">
         {/* Header section */}
-        <header className="mb-10 border-b border-border/50 pb-6 flex items-center justify-between">
+        <header className="sticky top-0 bg-background/80 backdrop-blur-md z-30 pt-6 md:pt-10 pb-6 mb-8 border-b border-border/50 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-medium tracking-tight text-foreground">o2 code</h1>
             <p className="text-xs text-muted-foreground mt-1">

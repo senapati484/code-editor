@@ -40,7 +40,7 @@ const DEFAULT_HTML = `<!DOCTYPE html>
   <title>O2 Code Sandbox</title>
 </head>
 <body>
-  <h1>O2 code is life</h1>
+  <h1>O2 code is working for HTML!</h1>
 </body>
 </html>`;
 

@@ -53,7 +53,7 @@ const LANGUAGES: Record<string, LangConfig> = {
     brandColor: "#F7DF1E",
     clientSide: true,
     template: `// JavaScript on O2 code
-console.log("JavaScript on O2 code is life!");
+console.log("O2 code is working for JavaScript!");
 `,
   },
   typescript: {
@@ -62,7 +62,7 @@ console.log("JavaScript on O2 code is life!");
     brandColor: "#3178C6",
     clientSide: true,
     template: `// TypeScript on O2 code
-const message: string = "TypeScript on O2 code is life!";
+const message: string = "O2 code is working for TypeScript!";
 console.log(message);
 `,
   },
@@ -72,7 +72,7 @@ console.log(message);
     brandColor: "#3776AB",
     clientSide: true,
     template: `# Python 3 on O2 code
-print("Python on O2 code is life!")
+print("O2 code is working for Python!")
 `,
   },
   c: {
@@ -83,7 +83,7 @@ print("Python on O2 code is life!")
     template: `#include <stdio.h>
 
 int main() {
-    printf("C on O2 code is life!\\n");
+    printf("O2 code is working for C!\n");
     return 0;
 }
 `,
@@ -96,7 +96,7 @@ int main() {
     template: `#include <iostream>
 
 int main() {
-    std::cout << "C++ on O2 code is life!" << std::endl;
+    std::cout << "O2 code is working for C++!" << std::endl;
     return 0;
 }
 `,
@@ -108,7 +108,7 @@ int main() {
     clientSide: false,
     template: `public class Main {
     public static void main(String[] args) {
-        System.out.println("Java on O2 code is life!");
+        System.out.println("O2 code is working for Java!");
     }
 }
 `,
@@ -119,7 +119,7 @@ int main() {
     brandColor: "#E05D2B",
     clientSide: false,
     template: `fn main() {
-    println!("Rust on O2 code is life!");
+    println!("O2 code is working for Rust!");
 }
 `,
   },
@@ -133,7 +133,7 @@ int main() {
 import "fmt"
 
 func main() {
-    fmt.Println("Go on O2 code is life!")
+    fmt.Println("O2 code is working for Go!")
 }
 `,
   },
@@ -142,7 +142,7 @@ func main() {
     color: "text-red-400", bgAccent: "bg-red-500/10 border-red-500/20",
     brandColor: "#CC342D",
     clientSide: false,
-    template: `puts "Ruby on O2 code is life!"
+    template: `puts "O2 code is working for Ruby!"
 `,
   },
   php: {
@@ -151,7 +151,7 @@ func main() {
     brandColor: "#777BB4",
     clientSide: false,
     template: `<?php
-echo "PHP on O2 code is life!\\n";
+echo "O2 code is working for PHP!\n";
 `,
   },
   sql: {
@@ -160,7 +160,7 @@ echo "PHP on O2 code is life!\\n";
     brandColor: "#00758F",
     clientSide: true,
     template: `-- SQL (SQLite) on O2 code
-SELECT 'SQL on O2 code is life!' AS status;
+SELECT 'O2 code is working for SQL!' AS status;
 `,
   },
 };
