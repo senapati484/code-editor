@@ -7,7 +7,7 @@ import { SettingsProvider } from "@/contexts/settings-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "02code — Multi-Language Playground",
+  title: "o2 code — Online Code Editor",
   description: "Write, compile, and run code instantly in 10+ languages. Browser-powered WASM runtimes for JS, TS, Python. Server-side compilers for C, C++, Java, Rust, Go, Ruby, PHP.",
 }
 
