@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
+  Github,
 } from "lucide-react";
 import { FaHtml5, FaJava } from "react-icons/fa";
 import { FaGolang } from "react-icons/fa6";
@@ -172,6 +173,27 @@ export default function SidebarNav() {
         {/* Footer Actions */}
         <div className="flex flex-col items-center gap-3 w-full px-2 mt-auto pt-2 shrink-0">
           <div className={`w-8 h-px ${isDark ? "bg-slate-800" : "bg-slate-200"}`} />
+
+          {/* GitHub Repo Link */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href="https://github.com/senapati484/code-editor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+                  isDark 
+                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" 
+                    : "text-slate-600 hover:text-slate-800 hover:bg-slate-200"
+                }`}
+              >
+                <Github className="h-5 w-5" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="right" className={isDark ? "bg-slate-950 text-slate-200 border-slate-800" : "bg-white text-slate-700 border-slate-200"}>
+              <p className="text-xs font-semibold">GitHub Repository</p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* Theme Toggle */}
           <Tooltip>

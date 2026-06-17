@@ -17,6 +17,7 @@ import {
   Trash2,
   FileCode,
   Monitor,
+  Github,
 } from "lucide-react";
 
 // ─── Initial template files ─────────────────────────────────────────────────
@@ -142,6 +143,20 @@ interface LogEntry {
 
 type ActiveFile = "html" | "css" | "js";
 
+const LANGUAGES = [
+  { id: "html", name: "HTML Sandbox", color: "text-[#E34F26]", bgAccent: "bg-orange-500/10 border-orange-500/20" },
+  { id: "javascript", name: "JavaScript", color: "text-[#F7DF1E]", bgAccent: "bg-yellow-500/10 border-yellow-500/20" },
+  { id: "typescript", name: "TypeScript", color: "text-[#3178C6]", bgAccent: "bg-blue-500/10 border-blue-500/20" },
+  { id: "python", name: "Python", color: "text-[#3776AB]", bgAccent: "bg-emerald-500/10 border-emerald-500/20" },
+  { id: "c", name: "C", color: "text-[#A8B9CC]", bgAccent: "bg-indigo-500/10 border-indigo-500/20" },
+  { id: "cpp", name: "C++", color: "text-[#00599C]", bgAccent: "bg-cyan-500/10 border-cyan-500/20" },
+  { id: "java", name: "Java", color: "text-[#E76F51]", bgAccent: "bg-rose-500/10 border-rose-500/20" },
+  { id: "rust", name: "Rust", color: "text-[#E05D2B]", bgAccent: "bg-orange-500/10 border-orange-500/20" },
+  { id: "go", name: "Go", color: "text-[#00ADD8]", bgAccent: "bg-sky-500/10 border-sky-500/20" },
+  { id: "ruby", name: "Ruby", color: "text-[#CC342D]", bgAccent: "bg-red-500/10 border-red-500/20" },
+  { id: "php", name: "PHP", color: "text-[#777BB4]", bgAccent: "bg-violet-500/10 border-violet-500/20" },
+];
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 function HtmlSandboxContent() {
@@ -156,6 +171,7 @@ function HtmlSandboxContent() {
   const [logs, setLogs]             = useState<LogEntry[]>([]);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [activeTab, setActiveTab]   = useState<"editor" | "preview">("editor");
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
   const isDark = theme === "dark";
 
@@ -284,10 +300,50 @@ function HtmlSandboxContent() {
               <span className="hidden xs:inline">Back</span>
             </Link>
 
-            <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full text-xs font-bold border bg-orange-500/10 border-orange-500/20">
-              <Globe className="h-3.5 w-3.5 text-orange-400" />
-              <span className={isDark ? "text-slate-200" : "text-slate-700"}>Web Sandbox</span>
-              <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>HTML · CSS · JS</span>
+            {/* Language Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border hover:opacity-85 transition-all shadow-sm cursor-pointer bg-orange-500/10 border-orange-500/20"
+              >
+                <Globe className="h-3.5 w-3.5 text-orange-400" />
+                <span className={isDark ? "text-slate-200" : "text-slate-700"}>Web Sandbox</span>
+                <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>HTML · CSS · JS</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+              </button>
+
+              {isLangDropdownOpen && (
+                <>
+                  {/* Backdrop to close the dropdown when clicking outside */}
+                  <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
+                  <div className={`absolute left-0 mt-2 w-48 rounded-xl border shadow-xl z-50 py-1.5 overflow-hidden focus:outline-none ${
+                    isDark ? "bg-[#161b22] border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-700"
+                  }`}>
+                    <div className="px-3 py-1 text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider border-b border-slate-800/10 dark:border-slate-800/30 mb-1.5">
+                      Switch Language
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto no-scrollbar">
+                      {LANGUAGES.map((cfg) => {
+                        const isCurrent = cfg.id === "html";
+                        return (
+                          <Link
+                            key={cfg.id}
+                            href={cfg.id === "html" ? "/html" : `/${cfg.id}`}
+                            onClick={() => setIsLangDropdownOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-indigo-500 hover:text-white transition-colors w-full text-left ${
+                              isCurrent ? (isDark ? "bg-slate-800 text-white font-bold" : "bg-slate-100 text-slate-900 font-bold") : ""
+                            }`}
+                          >
+                            <span className={cfg.color}>●</span>
+                            <span>{cfg.name}</span>
+                            {isCurrent && <span className="ml-auto text-[10px] opacity-60">Active</span>}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -319,11 +375,25 @@ function HtmlSandboxContent() {
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-2">
+            <a
+              href="https://github.com/senapati484/code-editor"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
+              title="GitHub Repository"
+            >
+              <Github className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
+
             <button
               onClick={handleReset}
               className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
+              title="Reset to template"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Reset</span>
@@ -333,6 +403,7 @@ function HtmlSandboxContent() {
               className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
               }`}
+              title="Download file"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -343,10 +414,11 @@ function HtmlSandboxContent() {
                 buildPreview(true);
                 setActiveTab("preview");
               }}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 transition-all duration-150"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
             >
               <Play className="h-3.5 w-3.5" />
               <span className="hidden xs:inline">Run</span>
+              <span className="inline xs:hidden">Run</span>
             </button>
           </div>
         </header>

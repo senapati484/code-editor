@@ -6,7 +6,7 @@ import SidebarNav from "@/components/sidebar-nav";
 import O2Logo from "@/components/logo";
 import { useSettings } from "@/contexts/settings-context";
 import { Card } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Github } from "lucide-react";
 import { FaHtml5, FaJava } from "react-icons/fa";
 import { FaGolang } from "react-icons/fa6";
 import {
@@ -131,7 +131,7 @@ export default function DashboardPage() {
       <SidebarNav />
 
       <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-y-auto p-6 md:p-8 pb-24 md:pb-8 max-w-5xl mx-auto w-full">
-        <header className="mb-8 border-b border-border pb-6">
+        <header className="mb-8 border-b border-border pb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <O2Logo className="w-10 h-10" />
             <div>
@@ -141,6 +141,20 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+          
+          <a
+            href="https://github.com/senapati484/code-editor"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+              isDark 
+                ? "bg-[#161b22] border-slate-800 hover:border-slate-700 text-slate-200 hover:bg-[#1f242c]" 
+                : "bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            <Github className="h-4 w-4" />
+            <span className="hidden sm:inline">GitHub</span>
+          </a>
         </header>
 
         <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

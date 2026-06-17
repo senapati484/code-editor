@@ -18,6 +18,8 @@ import {
   Trash2,
   Copy,
   Check,
+  Github,
+  ChevronDown,
 } from "lucide-react";
 
 // ─── Language configs ──────────────────────────────────────────────────────
@@ -505,6 +507,7 @@ function PlaygroundContent({ language }: { language: string }) {
   const [collectedInputs, setCollectedInputs]   = useState<string[]>([]);
   const [lastRawOutput, setLastRawOutput]       = useState("");
   const [activeTab, setActiveTab]               = useState<"editor" | "output">("editor");
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const interactiveInputRef = useRef<HTMLInputElement>(null);
   const outputEndRef        = useRef<HTMLDivElement>(null);
 
@@ -718,7 +721,7 @@ function PlaygroundContent({ language }: { language: string }) {
         <header className={`flex items-center justify-between px-3 md:px-4 py-2 border-b shrink-0 ${
           isDark ? "bg-[#161b22] border-slate-800" : "bg-white border-slate-200"
         }`}>
-          {/* Left: back + lang badge */}
+          {/* Left: back + interactive lang selector */}
           <div className="flex items-center gap-1.5 md:gap-3">
             <Link
               href="/"
@@ -730,10 +733,50 @@ function PlaygroundContent({ language }: { language: string }) {
               <span className="hidden xs:inline">Back</span>
             </Link>
 
-            <div className={`flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full text-xs font-bold border ${langConfig.bgAccent}`}>
-              <span className={langConfig.color}>●</span>
-              <span className={`${isDark ? "text-slate-200" : "text-slate-700"}`}>{langConfig.name}</span>
-              <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>{langConfig.filename}</span>
+            {/* Language Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border hover:opacity-85 transition-all shadow-sm cursor-pointer ${langConfig.bgAccent}`}
+              >
+                <span className={langConfig.color}>●</span>
+                <span className={`${isDark ? "text-slate-200" : "text-slate-700"}`}>{langConfig.name}</span>
+                <span className={`hidden sm:inline ${isDark ? "text-slate-500" : "text-slate-400"}`}>{langConfig.filename}</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+              </button>
+
+              {isLangDropdownOpen && (
+                <>
+                  {/* Backdrop to close the dropdown when clicking outside */}
+                  <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
+                  <div className={`absolute left-0 mt-2 w-48 rounded-xl border shadow-xl z-50 py-1.5 overflow-hidden focus:outline-none ${
+                    isDark ? "bg-[#161b22] border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-700"
+                  }`}>
+                    <div className="px-3 py-1 text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider border-b border-slate-800/10 dark:border-slate-800/30 mb-1.5">
+                      Switch Language
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto no-scrollbar">
+                      {Object.entries(LANGUAGES).map(([key, cfg]) => {
+                        const isCurrent = key === langKey;
+                        return (
+                          <Link
+                            key={key}
+                            href={key === "html" ? "/html" : `/${key}`}
+                            onClick={() => setIsLangDropdownOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-indigo-500 hover:text-white transition-colors w-full text-left ${
+                              isCurrent ? (isDark ? "bg-slate-800 text-white font-bold" : "bg-slate-100 text-slate-900 font-bold") : ""
+                            }`}
+                          >
+                            <span className={cfg.color}>●</span>
+                            <span>{cfg.name}</span>
+                            {isCurrent && <span className="ml-auto text-[10px] opacity-60">Active</span>}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <span className={`hidden sm:inline text-[11px] px-2 py-0.5 rounded border font-mono ${
@@ -776,6 +819,19 @@ function PlaygroundContent({ language }: { language: string }) {
               </div>
             )}
 
+            <a
+              href="https://github.com/senapati484/code-editor"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                isDark ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
+              title="GitHub Repository"
+            >
+              <Github className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
+
             <button
               onClick={handleReset}
               className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
@@ -803,7 +859,7 @@ function PlaygroundContent({ language }: { language: string }) {
             <button
               onClick={handleRun}
               disabled={status === "running"}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shadow-lg shadow-indigo-500/20 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               title="Run (Ctrl+Enter)"
             >
               {status === "running"
