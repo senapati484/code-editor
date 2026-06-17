@@ -1070,18 +1070,22 @@ function PlaygroundContent({ language }: { language: string }) {
       </main>
 
       <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className={theme === "dark" ? "dark bg-[#09090b] text-[#fafafa] border-zinc-800" : "bg-white text-zinc-900 border-zinc-200"}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset {langConfig?.filename || "code"} to the default template?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Reset {langConfig?.filename || "code"} to the default template?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-zinc-500 dark:text-zinc-400">
               This will overwrite your current code changes with the default template. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-zinc-200 text-zinc-900 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800/80">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmReset}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-none"
+              className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:text-white dark:hover:bg-rose-700 animate-none font-semibold border-none"
             >
               Reset
             </AlertDialogAction>
