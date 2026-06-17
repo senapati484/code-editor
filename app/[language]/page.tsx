@@ -93,7 +93,7 @@ print("O2 code is working for Python!")
     template: `#include <stdio.h>
 
 int main() {
-    printf("O2 code is working for C!\n");
+    printf("O2 code is working for C!\\n");
     return 0;
 }
 `,
@@ -161,7 +161,7 @@ func main() {
     brandColor: "#777BB4",
     clientSide: false,
     template: `<?php
-echo "O2 code is working for PHP!\n";
+echo "O2 code is working for PHP!\\n";
 `,
   },
   sql: {
