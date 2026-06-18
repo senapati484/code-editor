@@ -41,6 +41,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 // ─── Language configs ──────────────────────────────────────────────────────
 
@@ -555,7 +556,12 @@ type StatusType = "idle" | "running" | "success" | "error";
 
 function PlaygroundContent({ language }: { language: string }) {
   const router = useRouter();
-  const { theme, editorSettings, updateEditorSettings } = useSettings();
+  const { theme, editorSettings, updateEditorSettings, isMobileView } = useSettings();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const langKey = language.toLowerCase();
   const langConfig = LANGUAGES[langKey];
@@ -983,150 +989,441 @@ function PlaygroundContent({ language }: { language: string }) {
 
         {/* ── Editor + Output split ───────────────────────────────────── */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
-
-          {/* Code Editor */}
-          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden md:flex"}`}>
-            <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-              <span style={{ color: langConfig.brandColor }}>◆</span>
-              <span className="ml-1.5">{langConfig.filename}</span>
-            </div>
-            <div className="flex-1 overflow-hidden p-0">
-              <SyntaxHighlighter
-                code={code}
-                language={langKey}
-                onChange={saveCode}
-                fontSize={editorSettings.fontSize}
-                lineNumbers={editorSettings.lineNumbers}
-                wordWrap={editorSettings.wordWrap}
-                theme={theme}
-                className="h-full rounded-none border-0"
-              />
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="hidden md:block w-px shrink-0 bg-border" />
-
-          {/* Output Terminal */}
-          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "output" ? "flex" : "hidden md:flex"}`}>
-            {/* Output header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-              <div className="flex items-center gap-1.5">
-                <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                  Output
-                </span>
-                {status === "running" && (
-                  <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
-                    Running
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                {interactiveMode && (
-                  <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                    Waiting for input
-                  </span>
-                )}
-                <button
-                  onClick={handleCopyOutput}
-                  disabled={!output || status === "running"}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                  title="Copy output"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                </button>
-                <button
-                  onClick={() => { setOutput(""); setStatus("idle"); }}
-                  disabled={!output}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                  title="Clear output"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Output / Interactive Terminal */}
-            <div
-              className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
-              style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
-              onClick={() => interactiveInputRef.current?.focus()}
-            >
-              {!output && !interactiveMode ? (
-                <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
-                  <Terminal className="h-8 w-8" />
-                  <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
+          {!mounted ? (
+            <>
+              {/* Code Editor */}
+              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+                  <span style={{ color: langConfig.brandColor }}>◆</span>
+                  <span className="ml-1.5">{langConfig.filename}</span>
                 </div>
-              ) : (
-                <div
-                  className={
-                    status === "error" && !interactiveMode
-                      ? "text-rose-500 dark:text-rose-400"
-                      : "text-foreground"
-                  }
-                  style={{ whiteSpace: "pre-wrap" }}
-                >
-                  {output}
-                  {/* Inline interactive input — appears right after last output char */}
-                  {interactiveMode && (
-                    <span style={{ whiteSpace: "pre" }}>
-                      <input
-                        ref={interactiveInputRef}
-                        type="text"
-                        value={interactiveInput}
-                        onChange={e => setInteractiveInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
-                          if (e.key === "c" && e.ctrlKey) {
-                            setInteractiveMode(false);
-                            setStatus("error");
-                            setOutput(prev => prev + "^C\n");
-                          }
-                        }}
-                        spellCheck={false}
-                        autoComplete="off"
-                        autoCorrect="off"
-                        className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
-                        style={{
-                          width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
-                          minWidth: "2ch",
-                        }}
-                      />
-                      <span
-                        className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
-                        style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
-                      />
+                <div className="flex-1 overflow-hidden p-0">
+                  <SyntaxHighlighter
+                    code={code}
+                    language={langKey}
+                    onChange={saveCode}
+                    fontSize={editorSettings.fontSize}
+                    lineNumbers={editorSettings.lineNumbers}
+                    wordWrap={editorSettings.wordWrap}
+                    theme={theme}
+                    className="h-full rounded-none border-0"
+                  />
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="hidden md:block w-px shrink-0 bg-border" />
+
+              {/* Output Terminal */}
+              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                {/* Output header */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                      Output
                     </span>
+                    {status === "running" && (
+                      <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
+                        Running
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {interactiveMode && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                        Waiting for input
+                      </span>
+                    )}
+                    <button
+                      onClick={handleCopyOutput}
+                      disabled={!output || status === "running"}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                      title="Copy output"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => { setOutput(""); setStatus("idle"); }}
+                      disabled={!output}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                      title="Clear output"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Output / Interactive Terminal */}
+                <div
+                  className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
+                  style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
+                  onClick={() => interactiveInputRef.current?.focus()}
+                >
+                  {!output && !interactiveMode ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
+                      <Terminal className="h-8 w-8" />
+                      <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
+                    </div>
+                  ) : (
+                    <div
+                      className={
+                        status === "error" && !interactiveMode
+                          ? "text-rose-500 dark:text-rose-400"
+                          : "text-foreground"
+                      }
+                      style={{ whiteSpace: "pre-wrap" }}
+                    >
+                      {output}
+                      {interactiveMode && (
+                        <span style={{ whiteSpace: "pre" }}>
+                          <input
+                            ref={interactiveInputRef}
+                            type="text"
+                            value={interactiveInput}
+                            onChange={e => setInteractiveInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
+                              if (e.key === "c" && e.ctrlKey) {
+                                setInteractiveMode(false);
+                                setStatus("error");
+                                setOutput(prev => prev + "^C\n");
+                              }
+                            }}
+                            spellCheck={false}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
+                            style={{
+                              width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
+                              minWidth: "2ch",
+                            }}
+                          />
+                          <span
+                            className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
+                            style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
+                          />
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div ref={outputEndRef} />
+                </div>
+
+                {interactiveMode && (
+                  <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="text-[10px] font-semibold text-emerald-500">
+                      Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
+                    </span>
+                    <button
+                      onClick={() => {
+                        setInteractiveMode(false);
+                        setStatus("error");
+                        setOutput(prev => prev + "\n[Terminated]");
+                      }}
+                      className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
+                    >
+                      Kill
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : isMobileView ? (
+            <>
+              {/* Code Editor */}
+              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden"}`}>
+                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+                  <span style={{ color: langConfig.brandColor }}>◆</span>
+                  <span className="ml-1.5">{langConfig.filename}</span>
+                </div>
+                <div className="flex-1 overflow-hidden p-0">
+                  <SyntaxHighlighter
+                    code={code}
+                    language={langKey}
+                    onChange={saveCode}
+                    fontSize={editorSettings.fontSize}
+                    lineNumbers={editorSettings.lineNumbers}
+                    wordWrap={editorSettings.wordWrap}
+                    theme={theme}
+                    className="h-full rounded-none border-0"
+                  />
+                </div>
+              </div>
+
+              {/* Output Terminal */}
+              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "output" ? "flex" : "hidden"}`}>
+                {/* Output header */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                      Output
+                    </span>
+                    {status === "running" && (
+                      <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
+                        Running
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {interactiveMode && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                        Waiting for input
+                      </span>
+                    )}
+                    <button
+                      onClick={handleCopyOutput}
+                      disabled={!output || status === "running"}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                      title="Copy output"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => { setOutput(""); setStatus("idle"); }}
+                      disabled={!output}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                      title="Clear output"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Output / Interactive Terminal */}
+                <div
+                  className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
+                  style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
+                  onClick={() => interactiveInputRef.current?.focus()}
+                >
+                  {!output && !interactiveMode ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
+                      <Terminal className="h-8 w-8" />
+                      <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
+                    </div>
+                  ) : (
+                    <div
+                      className={
+                        status === "error" && !interactiveMode
+                          ? "text-rose-500 dark:text-rose-400"
+                          : "text-foreground"
+                      }
+                      style={{ whiteSpace: "pre-wrap" }}
+                    >
+                      {output}
+                      {interactiveMode && (
+                        <span style={{ whiteSpace: "pre" }}>
+                          <input
+                            ref={interactiveInputRef}
+                            type="text"
+                            value={interactiveInput}
+                            onChange={e => setInteractiveInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
+                              if (e.key === "c" && e.ctrlKey) {
+                                setInteractiveMode(false);
+                                setStatus("error");
+                                setOutput(prev => prev + "^C\n");
+                              }
+                            }}
+                            spellCheck={false}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
+                            style={{
+                              width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
+                              minWidth: "2ch",
+                            }}
+                          />
+                          <span
+                            className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
+                            style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
+                          />
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div ref={outputEndRef} />
+                </div>
+
+                {interactiveMode && (
+                  <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="text-[10px] font-semibold text-emerald-500">
+                      Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
+                    </span>
+                    <button
+                      onClick={() => {
+                        setInteractiveMode(false);
+                        setStatus("error");
+                        setOutput(prev => prev + "\n[Terminated]");
+                      }}
+                      className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
+                    >
+                      Kill
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <PanelGroup direction="horizontal">
+              <Panel defaultSize={50} minSize={20}>
+                {/* Code Editor */}
+                <div className="h-full flex flex-col overflow-hidden min-w-0">
+                  <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+                    <span style={{ color: langConfig.brandColor }}>◆</span>
+                    <span className="ml-1.5">{langConfig.filename}</span>
+                  </div>
+                  <div className="flex-1 overflow-hidden p-0">
+                    <SyntaxHighlighter
+                      code={code}
+                      language={langKey}
+                      onChange={saveCode}
+                      fontSize={editorSettings.fontSize}
+                      lineNumbers={editorSettings.lineNumbers}
+                      wordWrap={editorSettings.wordWrap}
+                      theme={theme}
+                      className="h-full rounded-none border-0"
+                    />
+                  </div>
+                </div>
+              </Panel>
+
+              <PanelResizeHandle className="group w-2 shrink-0 relative hover:bg-primary/10 active:bg-primary/25 transition-all duration-200 cursor-col-resize flex items-center justify-center">
+                {/* Visual divider line */}
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/30 transition-colors" />
+                {/* Centered drag handle pill */}
+                <div className="z-10 w-1 h-8 bg-muted-foreground/20 rounded-full group-hover:bg-primary/50 group-hover:scale-x-125 transition-all" />
+              </PanelResizeHandle>
+
+              <Panel defaultSize={50} minSize={20}>
+                {/* Output Terminal */}
+                <div className="h-full flex flex-col overflow-hidden min-w-0">
+                  {/* Output header */}
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                        Output
+                      </span>
+                      {status === "running" && (
+                        <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
+                          Running
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {interactiveMode && (
+                        <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                          Waiting for input
+                        </span>
+                      )}
+                      <button
+                        onClick={handleCopyOutput}
+                        disabled={!output || status === "running"}
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                        title="Copy output"
+                      >
+                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => { setOutput(""); setStatus("idle"); }}
+                        disabled={!output}
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                        title="Clear output"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Output / Interactive Terminal */}
+                  <div
+                    className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
+                    style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
+                    onClick={() => interactiveInputRef.current?.focus()}
+                  >
+                    {!output && !interactiveMode ? (
+                      <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
+                        <Terminal className="h-8 w-8" />
+                        <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
+                      </div>
+                    ) : (
+                      <div
+                        className={
+                          status === "error" && !interactiveMode
+                            ? "text-rose-500 dark:text-rose-400"
+                            : "text-foreground"
+                        }
+                        style={{ whiteSpace: "pre-wrap" }}
+                      >
+                        {output}
+                        {interactiveMode && (
+                          <span style={{ whiteSpace: "pre" }}>
+                            <input
+                              ref={interactiveInputRef}
+                              type="text"
+                              value={interactiveInput}
+                              onChange={e => setInteractiveInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
+                                if (e.key === "c" && e.ctrlKey) {
+                                  setInteractiveMode(false);
+                                  setStatus("error");
+                                  setOutput(prev => prev + "^C\n");
+                                }
+                              }}
+                              spellCheck={false}
+                              autoComplete="off"
+                              autoCorrect="off"
+                              className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
+                              style={{
+                                width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
+                                minWidth: "2ch",
+                              }}
+                            />
+                            <span
+                              className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
+                              style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
+                            />
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div ref={outputEndRef} />
+                  </div>
+
+                  {interactiveMode && (
+                    <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className="text-[10px] font-semibold text-emerald-500">
+                        Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
+                      </span>
+                      <button
+                        onClick={() => {
+                          setInteractiveMode(false);
+                          setStatus("error");
+                          setOutput(prev => prev + "\n[Terminated]");
+                        }}
+                        className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
+                      >
+                        Kill
+                      </button>
+                    </div>
                   )}
                 </div>
-              )}
-              <div ref={outputEndRef} />
-            </div>
-
-            {/* Interactive hint bar — only shown when waiting for input */}
-            {interactiveMode && (
-              <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-[10px] font-semibold text-emerald-500">
-                  Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
-                </span>
-                <button
-                  onClick={() => {
-                    setInteractiveMode(false);
-                    setStatus("error");
-                    setOutput(prev => prev + "\n[Terminated]");
-                  }}
-                  className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
-                >
-                  Kill
-                </button>
-              </div>
-            )}
-          </div>
-
+              </Panel>
+            </PanelGroup>
+          )}
         </div>
       </main>
 

@@ -39,6 +39,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 // ─── Initial template files ─────────────────────────────────────────────────
 
@@ -106,7 +107,12 @@ const LANGUAGES = [
 // ─── Component ──────────────────────────────────────────────────────────────
 
 function HtmlSandboxContent() {
-  const { theme, editorSettings, updateEditorSettings } = useSettings();
+  const { theme, editorSettings, updateEditorSettings, isMobileView } = useSettings();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [html, setHtml] = useState(DEFAULT_HTML);
   const [css, setCss]   = useState(DEFAULT_CSS);
@@ -436,121 +442,332 @@ function HtmlSandboxContent() {
           </div>
 
           {/* Code editor */}
-          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden md:flex"}`}>
-            {/* Horizontal File Tabs for Mobile */}
-            <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-background border-border">
-              {(["html", "css", "js"] as ActiveFile[]).map(ft => (
-                <button
-                  key={ft}
-                  onClick={() => setActiveFile(ft)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold border transition-all ${
-                    activeFile === ft
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-transparent text-muted-foreground border-border"
-                  }`}
-                >
-                  <FileCode className="h-3.5 w-3.5" />
-                  <span>{fileLabel[ft]}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-              <span className={fileDot[activeFile]}>◆</span>
-              <span className="ml-1.5">{fileLabel[activeFile]}</span>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <SyntaxHighlighter
-                key={activeFile}
-                code={getCode()}
-                language={activeFile === "js" ? "javascript" : activeFile}
-                onChange={handleChange}
-                fontSize={editorSettings.fontSize}
-                lineNumbers={editorSettings.lineNumbers}
-                wordWrap={editorSettings.wordWrap}
-                theme={theme}
-                className="h-full rounded-none border-0"
-              />
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="hidden md:block w-px shrink-0 bg-border" />
-
-          {/* Preview panel */}
-          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 relative ${activeTab === "preview" ? "flex" : "hidden md:flex"}`}>
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-              <div className="flex items-center gap-1.5">
-                <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
+          {!mounted ? (
+            <>
+              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+                  <span className={fileDot[activeFile]}>◆</span>
+                  <span className="ml-1.5">{fileLabel[activeFile]}</span>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <SyntaxHighlighter
+                    key={activeFile}
+                    code={getCode()}
+                    language={activeFile === "js" ? "javascript" : activeFile}
+                    onChange={handleChange}
+                    fontSize={editorSettings.fontSize}
+                    lineNumbers={editorSettings.lineNumbers}
+                    wordWrap={editorSettings.wordWrap}
+                    theme={theme}
+                    className="h-full rounded-none border-0"
+                  />
+                </div>
               </div>
-              {/* Console toggle */}
-              <button
-                onClick={() => setConsoleOpen(o => !o)}
-                className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                <Terminal className="h-3 w-3 text-orange-400" />
-                <span>Console ({logs.length})</span>
-                {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-              </button>
-            </div>
 
-            {/* iframe */}
-            <div className="flex-1 relative overflow-hidden">
-              <iframe
-                key={previewVersion}
-                srcDoc={preview}
-                title="Web Preview"
-                sandbox="allow-scripts"
-                className="absolute inset-0 w-full h-full border-0 bg-white"
-              />
-            </div>
+              {/* Divider */}
+              <div className="hidden md:block w-px shrink-0 bg-border" />
 
-            {/* Console drawer */}
-            {consoleOpen && (
-              <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              {/* Preview panel */}
+              <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
+                  </div>
+                  {/* Console toggle */}
+                  <button
+                    onClick={() => setConsoleOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
                     <Terminal className="h-3 w-3 text-orange-400" />
-                    Console Output
-                  </span>
-                  <div className="flex items-center gap-1">
+                    <span>Console ({logs.length})</span>
+                    {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                  </button>
+                </div>
+
+                {/* iframe */}
+                <div className="flex-1 relative overflow-hidden">
+                  <iframe
+                    key={previewVersion}
+                    srcDoc={preview}
+                    title="Web Preview"
+                    sandbox="allow-scripts"
+                    className="absolute inset-0 w-full h-full border-0 bg-white"
+                  />
+                </div>
+
+                {/* Console drawer */}
+                {consoleOpen && (
+                  <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Terminal className="h-3 w-3 text-orange-400" />
+                        Console Output
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setLogs([])}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title="Clear logs"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => setConsoleOpen(false)}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
+                      {logs.length === 0 ? (
+                        <div className="text-muted-foreground text-center py-4">No console output yet</div>
+                      ) : (
+                        logs.map((log, i) => (
+                          <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
+                            log.type === "error"
+                              ? "text-rose-500 bg-rose-500/5"
+                              : log.type === "warn"
+                              ? "text-amber-500 bg-amber-500/5"
+                              : "text-sky-500 dark:text-sky-300"
+                          }`}>
+                            <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
+                            <span className="whitespace-pre-wrap break-all">{log.msg}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : isMobileView ? (
+            <>
+              {/* Code editor */}
+              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden"}`}>
+                {/* Horizontal File Tabs for Mobile */}
+                <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-background border-border">
+                  {(["html", "css", "js"] as ActiveFile[]).map(ft => (
                     <button
-                      onClick={() => setLogs([])}
-                      className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      title="Clear logs"
+                      key={ft}
+                      onClick={() => setActiveFile(ft)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold border transition-all ${
+                        activeFile === ft
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-transparent text-muted-foreground border-border"
+                      }`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <FileCode className="h-3.5 w-3.5" />
+                      <span>{fileLabel[ft]}</span>
                     </button>
-                    <button
-                      onClick={() => setConsoleOpen(false)}
-                      className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    >
-                      <ChevronDown className="h-3 w-3" />
-                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+                  <span className={fileDot[activeFile]}>◆</span>
+                  <span className="ml-1.5">{fileLabel[activeFile]}</span>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <SyntaxHighlighter
+                    key={activeFile}
+                    code={getCode()}
+                    language={activeFile === "js" ? "javascript" : activeFile}
+                    onChange={handleChange}
+                    fontSize={editorSettings.fontSize}
+                    lineNumbers={editorSettings.lineNumbers}
+                    wordWrap={editorSettings.wordWrap}
+                    theme={theme}
+                    className="h-full rounded-none border-0"
+                  />
+                </div>
+              </div>
+
+              {/* Preview panel */}
+              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 relative ${activeTab === "preview" ? "flex" : "hidden"}`}>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
+                  </div>
+                  {/* Console toggle */}
+                  <button
+                    onClick={() => setConsoleOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Terminal className="h-3 w-3 text-orange-400" />
+                    <span>Console ({logs.length})</span>
+                    {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                  </button>
+                </div>
+
+                {/* iframe */}
+                <div className="flex-1 relative overflow-hidden">
+                  <iframe
+                    key={previewVersion}
+                    srcDoc={preview}
+                    title="Web Preview"
+                    sandbox="allow-scripts"
+                    className="absolute inset-0 w-full h-full border-0 bg-white"
+                  />
+                </div>
+
+                {/* Console drawer */}
+                {consoleOpen && (
+                  <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Terminal className="h-3 w-3 text-orange-400" />
+                        Console Output
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setLogs([])}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title="Clear logs"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => setConsoleOpen(false)}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
+                      {logs.length === 0 ? (
+                        <div className="text-muted-foreground text-center py-4">No console output yet</div>
+                      ) : (
+                        logs.map((log, i) => (
+                          <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
+                            log.type === "error"
+                              ? "text-rose-500 bg-rose-500/5"
+                              : log.type === "warn"
+                              ? "text-amber-500 bg-amber-500/5"
+                              : "text-sky-500 dark:text-sky-300"
+                          }`}>
+                            <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
+                            <span className="whitespace-pre-wrap break-all">{log.msg}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <PanelGroup direction="horizontal">
+              <Panel defaultSize={50} minSize={20}>
+                {/* Code editor */}
+                <div className="h-full flex flex-col overflow-hidden min-w-0">
+                  <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+                    <span className={fileDot[activeFile]}>◆</span>
+                    <span className="ml-1.5">{fileLabel[activeFile]}</span>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <SyntaxHighlighter
+                      key={activeFile}
+                      code={getCode()}
+                      language={activeFile === "js" ? "javascript" : activeFile}
+                      onChange={handleChange}
+                      fontSize={editorSettings.fontSize}
+                      lineNumbers={editorSettings.lineNumbers}
+                      wordWrap={editorSettings.wordWrap}
+                      theme={theme}
+                      className="h-full rounded-none border-0"
+                    />
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
-                  {logs.length === 0 ? (
-                    <div className="text-muted-foreground text-center py-4">No console output yet</div>
-                  ) : (
-                    logs.map((log, i) => (
-                      <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
-                        log.type === "error"
-                          ? "text-rose-500 bg-rose-500/5"
-                          : log.type === "warn"
-                          ? "text-amber-500 bg-amber-500/5"
-                          : "text-sky-500 dark:text-sky-300"
-                      }`}>
-                        <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
-                        <span className="whitespace-pre-wrap break-all">{log.msg}</span>
+              </Panel>
+
+              <PanelResizeHandle className="group w-2 shrink-0 relative hover:bg-primary/10 active:bg-primary/25 transition-all duration-200 cursor-col-resize flex items-center justify-center">
+                {/* Visual divider line */}
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/30 transition-colors" />
+                {/* Centered drag handle pill */}
+                <div className="z-10 w-1 h-8 bg-muted-foreground/20 rounded-full group-hover:bg-primary/50 group-hover:scale-x-125 transition-all" />
+              </PanelResizeHandle>
+
+              <Panel defaultSize={50} minSize={20}>
+                {/* Preview panel */}
+                <div className="h-full flex flex-col overflow-hidden min-w-0 relative">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
+                    </div>
+                    {/* Console toggle */}
+                    <button
+                      onClick={() => setConsoleOpen(o => !o)}
+                      className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Terminal className="h-3 w-3 text-orange-400" />
+                      <span>Console ({logs.length})</span>
+                      {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                    </button>
+                  </div>
+
+                  {/* iframe */}
+                  <div className="flex-1 relative overflow-hidden">
+                    <iframe
+                      key={previewVersion}
+                      srcDoc={preview}
+                      title="Web Preview"
+                      sandbox="allow-scripts"
+                      className="absolute inset-0 w-full h-full border-0 bg-white"
+                    />
+                  </div>
+
+                  {/* Console drawer */}
+                  {consoleOpen && (
+                    <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Terminal className="h-3 w-3 text-orange-400" />
+                          Console Output
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setLogs([])}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            title="Clear logs"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => setConsoleOpen(false)}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
-                    ))
+                      <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
+                        {logs.length === 0 ? (
+                          <div className="text-muted-foreground text-center py-4">No console output yet</div>
+                        ) : (
+                          logs.map((log, i) => (
+                            <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
+                              log.type === "error"
+                                ? "text-rose-500 bg-rose-500/5"
+                                : log.type === "warn"
+                                ? "text-amber-500 bg-amber-500/5"
+                                : "text-sky-500 dark:text-sky-300"
+                            }`}>
+                              <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
+                              <span className="whitespace-pre-wrap break-all">{log.msg}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              </Panel>
+            </PanelGroup>
+          )}
         </div>
       </main>
 
