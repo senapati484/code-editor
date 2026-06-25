@@ -81,7 +81,7 @@ console.log(message);
     id: "python", name: "Python", filename: "main.py", extension: "py",
     color: "text-emerald-400", bgAccent: "bg-emerald-500/10 border-emerald-500/20",
     brandColor: "#3776AB",
-    clientSide: true,
+    clientSide: false,
     template: `# Python 3 on O2 code
 print("O2 code is working for Python!")
 `,
@@ -293,24 +293,63 @@ let pyodideInstance: any = null;
 let pyodideLoading: Promise<any> | null = null;
 
 async function loadPyodide(): Promise<any> {
-  if (pyodideInstance) return pyodideInstance;
-  if (pyodideLoading)  return pyodideLoading;
+  if (pyodideInstance) {
+    console.log("loadPyodide: returning cached pyodideInstance");
+    return pyodideInstance;
+  }
+  if (pyodideLoading) {
+    console.log("loadPyodide: returning existing pyodideLoading promise");
+    return pyodideLoading;
+  }
 
+  console.log("loadPyodide: starting script download/initialization...");
   pyodideLoading = new Promise<any>((resolve, reject) => {
     if ((window as any).loadPyodide) {
+      console.log("loadPyodide: window.loadPyodide is already defined, invoking directly...");
       (window as any).loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" })
-        .then((p: any) => { pyodideInstance = p; pyodideLoading = null; resolve(p); })
-        .catch((e: any) => { pyodideLoading = null; reject(e); });
+        .then((p: any) => {
+          console.log("loadPyodide: pyodide loaded successfully (direct)");
+          pyodideInstance = p;
+          pyodideLoading = null;
+          resolve(p);
+        })
+        .catch((e: any) => {
+          console.error("loadPyodide: pyodide load failed (direct):", e);
+          pyodideLoading = null;
+          reject(e);
+        });
       return;
     }
+
+    console.log("loadPyodide: creating script tag for CDN load...");
     const s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js";
     s.onload = () => {
+      console.log("loadPyodide: CDN script onload triggered, invoking window.loadPyodide...");
+      if (!(window as any).loadPyodide) {
+        console.error("loadPyodide: window.loadPyodide is not defined after CDN script onload!");
+        pyodideLoading = null;
+        reject(new Error("Failed to find loadPyodide on window after script load"));
+        return;
+      }
       (window as any).loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" })
-        .then((p: any) => { pyodideInstance = p; pyodideLoading = null; resolve(p); })
-        .catch((e: any) => { pyodideLoading = null; reject(e); });
+        .then((p: any) => {
+          console.log("loadPyodide: pyodide loaded successfully (CDN)");
+          pyodideInstance = p;
+          pyodideLoading = null;
+          resolve(p);
+        })
+        .catch((e: any) => {
+          console.error("loadPyodide: pyodide load failed (CDN):", e);
+          pyodideLoading = null;
+          reject(e);
+        });
     };
-    s.onerror = () => { pyodideLoading = null; reject(new Error("Failed to load Pyodide")); };
+    s.onerror = (err) => {
+      console.error("loadPyodide: CDN script loading error event:", err);
+      pyodideLoading = null;
+      reject(new Error("Failed to load Pyodide CDN script"));
+    };
     document.head.appendChild(s);
   });
   return pyodideLoading;
@@ -531,6 +570,8 @@ const isEOFError = (stderr: string, langKey: string): boolean => {
   if (!stderr) return false;
   const err = stderr.toLowerCase();
   switch (langKey) {
+    case "python":
+      return err.includes("eoferror");
     case "c":
       return err.includes("eoferror");
     case "cpp":
@@ -672,7 +713,7 @@ function PlaygroundContent({ language }: { language: string }) {
       setCollectedInputs([]);
       setLastRawOutput("");
       if (langKey === "python") {
-        setOutput("Loading Python runtime (first run may take ~30s)...\n");
+        setOutput("Connecting to Python 3 compiler...\n");
       } else if (langKey === "typescript") {
         setOutput("Compiling TypeScript...\n");
       } else if (langKey === "sql") {
@@ -753,11 +794,10 @@ function PlaygroundContent({ language }: { language: string }) {
         runRes = await runJSAsync(activeCode, stdinStr);
       } else if (langKey === "typescript") {
         runRes = await runTypeScript(activeCode, stdinStr);
-      } else if (langKey === "python") {
-        runRes = await runPython(activeCode, stdinStr);
       } else if (langKey === "sql") {
         runRes = await runSQLAsync(activeCode);
       } else {
+        // Server-side: python, c, cpp, java, rust, go, ruby, php
         runRes = await runServer(activeCode, langKey, stdinStr);
       }
 

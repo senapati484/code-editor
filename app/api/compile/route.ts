@@ -6,13 +6,14 @@ export const maxDuration = 30;
 // Paiza.io supports: c, cpp, java, python3, go, ruby, php, rust, swift, kotlin, scala, ...
 // Language identifiers used by Paiza.io
 const PAIZA_LANG: Record<string, { lang: string; filename: string }> = {
-  c:    { lang: "c",    filename: "main.c" },
-  cpp:  { lang: "cpp",  filename: "main.cpp" },
-  java: { lang: "java", filename: "Main.java" },
-  rust: { lang: "rust", filename: "main.rs" },
-  go:   { lang: "go",   filename: "main.go" },
-  ruby: { lang: "ruby", filename: "main.rb" },
-  php:  { lang: "php",  filename: "main.php" },
+  c:      { lang: "c",       filename: "main.c" },
+  cpp:    { lang: "cpp",     filename: "main.cpp" },
+  java:   { lang: "java",   filename: "Main.java" },
+  python: { lang: "python3", filename: "main.py" },
+  rust:   { lang: "rust",   filename: "main.rs" },
+  go:     { lang: "go",     filename: "main.go" },
+  ruby:   { lang: "ruby",   filename: "main.rb" },
+  php:    { lang: "php",    filename: "main.php" },
 };
 
 async function runWithPaiza(code: string, lang: string, stdin: string = "") {
@@ -196,6 +197,10 @@ function preprocessCode(code: string, lang: string): string {
         `}\n`;
       return out;
     }
+
+    case "python":
+      // Python: no preprocessing needed — Paiza.io handles stdin natively
+      return code;
 
     case "ruby":
       // Override gets to raise EOFError on nil
