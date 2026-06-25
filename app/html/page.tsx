@@ -19,6 +19,8 @@ import {
   Monitor,
   Github,
   Sliders,
+  Check,
+  Copy,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -39,7 +41,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 
 // ─── Initial template files ─────────────────────────────────────────────────
 
@@ -128,14 +130,113 @@ function HtmlSandboxContent() {
 
   const isDark = theme === "dark";
 
-  // Load from localStorage
+  // Load from localStorage & URL parameters
   useEffect(() => {
-    const h = localStorage.getItem("sandbox-html");
-    const c = localStorage.getItem("sandbox-css");
-    const j = localStorage.getItem("sandbox-js");
-    if (h) setHtml(h);
-    if (c) setCss(c);
-    if (j) setJs(j);
+    const params = new URLSearchParams(window.location.search);
+    let htmlVal = params.get("html") || params.get("h") || params.get("code") || params.get("c");
+    let cssVal = params.get("css") || params.get("style");
+    let jsVal = params.get("js") || params.get("j") || params.get("script");
+
+    if (window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      if (!htmlVal) htmlVal = hashParams.get("html") || hashParams.get("h") || hashParams.get("code") || hashParams.get("c");
+      if (!cssVal) cssVal = hashParams.get("css") || hashParams.get("style");
+      if (!jsVal) jsVal = hashParams.get("js") || hashParams.get("j") || hashParams.get("script");
+    }
+
+    const decodeValue = (encoded: string | null) => {
+      if (!encoded) return null;
+      try {
+        const normalized = encoded.replace(/\s/g, "+");
+        return decodeURIComponent(
+          atob(normalized)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+      } catch (e) {
+        try {
+          return decodeURIComponent(encoded);
+        } catch (err) {
+          return encoded;
+        }
+      }
+    };
+
+    const urlHtml = decodeValue(htmlVal);
+    const urlCss = decodeValue(cssVal);
+    const urlJs = decodeValue(jsVal);
+
+    let finalHtml = "";
+    let finalCss = "";
+    let finalJs = "";
+    let hasUrlCode = false;
+
+    if (urlHtml !== null || urlCss !== null || urlJs !== null) {
+      hasUrlCode = true;
+      finalHtml = urlHtml !== null ? urlHtml : "";
+      finalCss = urlCss !== null ? urlCss : "";
+      finalJs = urlJs !== null ? urlJs : "";
+    } else {
+      finalHtml = localStorage.getItem("sandbox-html") ?? DEFAULT_HTML;
+      finalCss = localStorage.getItem("sandbox-css") ?? DEFAULT_CSS;
+      finalJs = localStorage.getItem("sandbox-js") ?? DEFAULT_JS;
+    }
+
+    setHtml(finalHtml);
+    setCss(finalCss);
+    setJs(finalJs);
+
+    if (hasUrlCode) {
+      localStorage.setItem("sandbox-html", finalHtml);
+      localStorage.setItem("sandbox-css", finalCss);
+      localStorage.setItem("sandbox-js", finalJs);
+    }
+
+    // Initial build preview using loaded values directly to bypass state update lag
+    const consoleBridge = `<script>
+(function(){
+  ['log','warn','error'].forEach(function(t){
+    var orig = console[t];
+    console[t] = function(){
+      var msg = Array.from(arguments).map(function(a){
+        return typeof a === 'object' ? JSON.stringify(a) : String(a);
+      }).join(' ');
+      parent.postMessage({type:'__SANDBOX_LOG__',logType:t,message:msg},'*');
+      orig.apply(console,arguments);
+    };
+  });
+  window.addEventListener('error',function(e){
+    parent.postMessage({type:'__SANDBOX_LOG__',logType:'error',message:e.message},'*');
+  });
+})();
+</script>`;
+
+    let doc = finalHtml;
+    const style = `<style>\n${finalCss}\n</style>`;
+    const script = `<script>\n${finalJs}\n</script>`;
+
+    if (doc.includes("</head>")) {
+      doc = doc.replace("</head>", `${consoleBridge}\n${style}\n</head>`);
+    } else {
+      doc = consoleBridge + "\n" + style + "\n" + doc;
+    }
+    if (doc.includes("</body>")) {
+      doc = doc.replace("</body>", `${script}\n</body>`);
+    } else {
+      doc = doc + "\n" + script;
+    }
+    setPreview(doc);
+    setPreviewVersion((v) => v + 1);
+
+    // Auto-run trigger
+    const autoRun = params.get("run") === "true" || params.get("r") === "true" ||
+      (window.location.hash && new URLSearchParams(window.location.hash.substring(1)).get("run") === "true") ||
+      (window.location.hash && new URLSearchParams(window.location.hash.substring(1)).get("r") === "true");
+
+    if (autoRun && hasUrlCode) {
+      setActiveTab("preview");
+    }
   }, []);
 
   const buildPreview = useCallback((shouldClearLogs = false) => {
@@ -231,6 +332,32 @@ function HtmlSandboxContent() {
     a.href = url; a.download = "sandbox.html";
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const handleCopyShareLink = () => {
+    try {
+      const encodeBase64 = (str: string) => {
+        return btoa(
+          encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+            return String.fromCharCode(parseInt(p1, 16));
+          })
+        );
+      };
+      
+      const encodedHtml = encodeURIComponent(encodeBase64(html));
+      const encodedCss = encodeURIComponent(encodeBase64(css));
+      const encodedJs = encodeURIComponent(encodeBase64(js));
+      
+      const shareUrl = `${window.location.origin}${window.location.pathname}#html=${encodedHtml}&css=${encodedCss}&js=${encodedJs}&run=true`;
+      
+      navigator.clipboard.writeText(shareUrl);
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 2000);
+    } catch (e) {
+      console.error("Failed to copy share link:", e);
+    }
   };
 
   const fileLabel = { html: "index.html", css: "style.css", js: "script.js" };
@@ -401,6 +528,17 @@ function HtmlSandboxContent() {
                 >
                   <Download className="mr-2 h-3.5 w-3.5" />
                   <span>Download File</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleCopyShareLink}
+                  className="text-xs py-2 cursor-pointer"
+                >
+                  {shareLinkCopied ? (
+                    <Check className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  <span>{shareLinkCopied ? "Link Copied!" : "Copy Share Link"}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -659,7 +797,7 @@ function HtmlSandboxContent() {
               </div>
             </>
           ) : (
-            <PanelGroup direction="horizontal">
+            <PanelGroup orientation="horizontal">
               <Panel defaultSize={50} minSize={20}>
                 {/* Code editor */}
                 <div className="h-full flex flex-col overflow-hidden min-w-0">

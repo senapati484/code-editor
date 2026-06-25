@@ -41,7 +41,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 
 // ─── Language configs ──────────────────────────────────────────────────────
 
@@ -595,17 +595,78 @@ function PlaygroundContent({ language }: { language: string }) {
     }
   }, [interactiveMode]);
 
-  // Reset state when language changes
+  // Reset state when language changes & check URL parameters
   useEffect(() => {
     if (!langConfig) { router.push("/"); return; }
-    const saved = localStorage.getItem(`code-${langKey}`);
-    setCode(saved ?? langConfig.template);
+
+    // Parse URL search parameters & hash parameters
+    const params = new URLSearchParams(window.location.search);
+    let codeFromUrl = params.get("code") || params.get("c");
+
+    if (!codeFromUrl && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      codeFromUrl = hashParams.get("code") || hashParams.get("c");
+    }
+
+    let initialCode = "";
+    if (codeFromUrl) {
+      try {
+        const normalizedBase64 = codeFromUrl.replace(/\s/g, "+");
+        initialCode = decodeURIComponent(
+          atob(normalizedBase64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+      } catch (e) {
+        try {
+          initialCode = decodeURIComponent(codeFromUrl);
+        } catch (err) {
+          initialCode = codeFromUrl;
+        }
+      }
+    }
+
+    if (initialCode) {
+      setCode(initialCode);
+      localStorage.setItem(`code-${langKey}`, initialCode);
+    } else {
+      const saved = localStorage.getItem(`code-${langKey}`);
+      setCode(saved ?? langConfig.template);
+    }
+
     setOutput("");
     setStatus("idle");
     setInteractiveMode(false);
     setInteractiveInput("");
     setCollectedInputs([]);
     setLastRawOutput("");
+
+    // Auto-run trigger
+    const autoRun = params.get("run") === "true" || params.get("r") === "true" ||
+      (window.location.hash && new URLSearchParams(window.location.hash.substring(1)).get("run") === "true") ||
+      (window.location.hash && new URLSearchParams(window.location.hash.substring(1)).get("r") === "true");
+
+    if (autoRun && initialCode) {
+      setStatus("running");
+      setActiveTab("output");
+      setInteractiveMode(false);
+      setInteractiveInput("");
+      setCollectedInputs([]);
+      setLastRawOutput("");
+      if (langKey === "python") {
+        setOutput("Loading Python runtime (first run may take ~30s)...\n");
+      } else if (langKey === "typescript") {
+        setOutput("Compiling TypeScript...\n");
+      } else if (langKey === "sql") {
+        setOutput("Initializing SQLite WebAssembly...\n");
+      } else if (!LANGUAGES[langKey]?.clientSide) {
+        setOutput("Connecting to compiler...\n");
+      } else {
+        setOutput("");
+      }
+      executeWithInputs([], initialCode);
+    }
   }, [langKey]); // eslint-disable-line
 
   const saveCode = (c: string) => {
@@ -646,26 +707,46 @@ function PlaygroundContent({ language }: { language: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const handleCopyShareLink = () => {
+    try {
+      const encoded = btoa(
+        encodeURIComponent(code).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+          return String.fromCharCode(parseInt(p1, 16));
+        })
+      );
+      const shareUrl = `${window.location.origin}${window.location.pathname}#code=${encodeURIComponent(encoded)}&run=true`;
+      
+      navigator.clipboard.writeText(shareUrl);
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 2000);
+    } catch (e) {
+      console.error("Failed to copy share link:", e);
+    }
+  };
+
   // Core execution: run code with the accumulated list of inputs
-  const executeWithInputs = useCallback(async (inputs: string[]) => {
+  const executeWithInputs = useCallback(async (inputs: string[], codeOverride?: string) => {
+    const activeCode = codeOverride !== undefined ? codeOverride : code;
     const stdinStr = inputs.length > 0 ? inputs.join("\n") + "\n" : "";
     try {
       let runRes: ExecutionResult;
       if (langKey === "javascript") {
-        runRes = await runJSAsync(code, stdinStr);
+        runRes = await runJSAsync(activeCode, stdinStr);
       } else if (langKey === "typescript") {
-        runRes = await runTypeScript(code, stdinStr);
+        runRes = await runTypeScript(activeCode, stdinStr);
       } else if (langKey === "python") {
-        runRes = await runPython(code, stdinStr);
+        runRes = await runPython(activeCode, stdinStr);
       } else if (langKey === "sql") {
-        runRes = await runSQLAsync(code);
+        runRes = await runSQLAsync(activeCode);
       } else {
-        runRes = await runServer(code, langKey, stdinStr);
+        runRes = await runServer(activeCode, langKey, stdinStr);
       }
 
       // Determine if interactiveMode should be active
       const isClientSideInput = !!runRes.hasMarker;
-      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(code, langKey) && (endsWithPrompt(runRes.stdout) || isEOFError(runRes.stderr, langKey));
+      const isServerSideInput = !LANGUAGES[langKey]?.clientSide && hasInputCalls(activeCode, langKey) && (endsWithPrompt(runRes.stdout) || isEOFError(runRes.stderr, langKey));
       const isInteractive = isClientSideInput || isServerSideInput;
 
       // Reconstruct rawResult to print
@@ -965,6 +1046,17 @@ function PlaygroundContent({ language }: { language: string }) {
                 >
                   <Download className="mr-2 h-3.5 w-3.5" />
                   <span>Download File</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleCopyShareLink}
+                  className="text-xs py-2 cursor-pointer"
+                >
+                  {shareLinkCopied ? (
+                    <Check className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  <span>{shareLinkCopied ? "Link Copied!" : "Copy Share Link"}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1273,7 +1365,7 @@ function PlaygroundContent({ language }: { language: string }) {
               </div>
             </>
           ) : (
-            <PanelGroup direction="horizontal">
+            <PanelGroup orientation="horizontal">
               <Panel defaultSize={50} minSize={20}>
                 {/* Code Editor */}
                 <div className="h-full flex flex-col overflow-hidden min-w-0">
