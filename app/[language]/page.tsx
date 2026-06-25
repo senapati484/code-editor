@@ -578,6 +578,8 @@ function PlaygroundContent({ language }: { language: string }) {
   const [activeTab, setActiveTab]               = useState<"editor" | "output">("editor");
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isEmbedded, setIsEmbedded]             = useState(false);
+  const [hideHeader, setHideHeader]             = useState(false);
   const interactiveInputRef = useRef<HTMLInputElement>(null);
   const outputEndRef        = useRef<HTMLDivElement>(null);
 
@@ -602,10 +604,25 @@ function PlaygroundContent({ language }: { language: string }) {
     // Parse URL search parameters & hash parameters
     const params = new URLSearchParams(window.location.search);
     let codeFromUrl = params.get("code") || params.get("c");
+    let embedVal = params.get("embed") || "";
+    let eShort = params.get("e") || "";
 
-    if (!codeFromUrl && window.location.hash) {
+    if (window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      codeFromUrl = hashParams.get("code") || hashParams.get("c");
+      if (!codeFromUrl) codeFromUrl = hashParams.get("code") || hashParams.get("c");
+      if (!embedVal) embedVal = hashParams.get("embed") || "";
+      if (!eShort) eShort = hashParams.get("e") || "";
+    }
+
+    const finalEmbed = embedVal || eShort;
+    if (finalEmbed === "true" || finalEmbed === "full") {
+      setIsEmbedded(true);
+      if (finalEmbed === "full") {
+        setHideHeader(true);
+      }
+    } else {
+      setIsEmbedded(false);
+      setHideHeader(false);
     }
 
     let initialCode = "";
@@ -872,21 +889,24 @@ function PlaygroundContent({ language }: { language: string }) {
 
   return (
     <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
-      <SidebarNav />
+      {!isEmbedded && <SidebarNav />}
 
-      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
+      <main className={`flex-1 flex flex-col ${isEmbedded ? "h-screen h-[100dvh]" : "h-[calc(100dvh-4rem)] md:h-screen"} overflow-hidden`}>
 
         {/* ── Top toolbar ─────────────────────────────────────────────── */}
-        <header className="relative z-40 flex items-center justify-between px-3 md:px-4 py-1.5 md:py-2 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
-          {/* Left: back + interactive lang selector */}
-          <div className="flex items-center gap-2 md:gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Back</span>
-            </Link>
+        {!hideHeader && (
+          <header className="relative z-40 flex items-center justify-between px-3 md:px-4 py-1.5 md:py-2 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
+            {/* Left: back + interactive lang selector */}
+            <div className="flex items-center gap-2 md:gap-3">
+              {!isEmbedded && (
+                <Link
+                  href="/"
+                  className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span className="hidden xs:inline">Back</span>
+                </Link>
+              )}
 
             {/* Language Switcher Dropdown */}
             <div className="relative">
@@ -970,16 +990,18 @@ function PlaygroundContent({ language }: { language: string }) {
               </div>
             )}
 
-            <a
-              href="https://github.com/senapati484/code-editor"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="GitHub Repository"
-            >
-              <Github className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">GitHub</span>
-            </a>
+            {!isEmbedded && (
+              <a
+                href="https://github.com/senapati484/code-editor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="GitHub Repository"
+              >
+                <Github className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">GitHub</span>
+              </a>
+            )}
 
             <button
               onClick={handleReset}
@@ -1078,6 +1100,7 @@ function PlaygroundContent({ language }: { language: string }) {
             </button>
           </div>
         </header>
+      )}
 
         {/* ── Editor + Output split ───────────────────────────────────── */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">

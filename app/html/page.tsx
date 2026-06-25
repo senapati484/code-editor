@@ -127,6 +127,8 @@ function HtmlSandboxContent() {
   const [activeTab, setActiveTab]   = useState<"editor" | "preview">("editor");
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isEmbedded, setIsEmbedded]             = useState(false);
+  const [hideHeader, setHideHeader]             = useState(false);
 
   const isDark = theme === "dark";
 
@@ -136,12 +138,27 @@ function HtmlSandboxContent() {
     let htmlVal = params.get("html") || params.get("h") || params.get("code") || params.get("c");
     let cssVal = params.get("css") || params.get("style");
     let jsVal = params.get("js") || params.get("j") || params.get("script");
+    let embedVal = params.get("embed") || "";
+    let eShort = params.get("e") || "";
 
     if (window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       if (!htmlVal) htmlVal = hashParams.get("html") || hashParams.get("h") || hashParams.get("code") || hashParams.get("c");
       if (!cssVal) cssVal = hashParams.get("css") || hashParams.get("style");
       if (!jsVal) jsVal = hashParams.get("js") || hashParams.get("j") || hashParams.get("script");
+      if (!embedVal) embedVal = hashParams.get("embed") || "";
+      if (!eShort) eShort = hashParams.get("e") || "";
+    }
+
+    const finalEmbed = embedVal || eShort;
+    if (finalEmbed === "true" || finalEmbed === "full") {
+      setIsEmbedded(true);
+      if (finalEmbed === "full") {
+        setHideHeader(true);
+      }
+    } else {
+      setIsEmbedded(false);
+      setHideHeader(false);
     }
 
     const decodeValue = (encoded: string | null) => {
@@ -365,20 +382,23 @@ function HtmlSandboxContent() {
 
   return (
     <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
-      <SidebarNav />
+      {!isEmbedded && <SidebarNav />}
 
-      <main className="flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-screen overflow-hidden">
+      <main className={`flex-1 flex flex-col ${isEmbedded ? "h-screen h-[100dvh]" : "h-[calc(100dvh-4rem)] md:h-screen"} overflow-hidden`}>
 
         {/* ── Toolbar ──────────────────────────────────────────────── */}
-        <header className="relative z-40 flex items-center justify-between px-3 md:px-4 py-1.5 md:py-2 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-1.5 md:gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Back</span>
-            </Link>
+        {!hideHeader && (
+          <header className="relative z-40 flex items-center justify-between px-3 md:px-4 py-1.5 md:py-2 border-b border-border bg-card/20 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-1.5 md:gap-3">
+              {!isEmbedded && (
+                <Link
+                  href="/"
+                  className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span className="hidden xs:inline">Back</span>
+                </Link>
+              )}
 
             {/* Language Switcher Dropdown */}
             <div className="relative">
@@ -453,16 +473,18 @@ function HtmlSandboxContent() {
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-2">
-            <a
-              href="https://github.com/senapati484/code-editor"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="GitHub Repository"
-            >
-              <Github className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">GitHub</span>
-            </a>
+            {!isEmbedded && (
+              <a
+                href="https://github.com/senapati484/code-editor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="GitHub Repository"
+              >
+                <Github className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">GitHub</span>
+              </a>
+            )}
 
             <button
               onClick={handleReset}
@@ -555,6 +577,7 @@ function HtmlSandboxContent() {
             </button>
           </div>
         </header>
+      )}
 
         {/* ── 3-column workspace: file list | editor | preview ─────── */}
         <div className="flex-1 flex overflow-hidden bg-background">
