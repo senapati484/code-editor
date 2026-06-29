@@ -21,19 +21,32 @@
 
 ## 🌐 Supported Languages
 
-| Language   | URL Slug      | Execution         |
-|------------|---------------|-------------------|
-| Python 3   | `/python`     | Server (Paiza.io) |
-| JavaScript | `/javascript` | Browser (Sandbox) |
-| TypeScript | `/typescript` | Browser (TS CDN)  |
-| C          | `/c`          | Server (Paiza.io) |
-| C++        | `/cpp`        | Server (Paiza.io) |
-| Java       | `/java`       | Server (Paiza.io) |
-| Rust       | `/rust`       | Server (Paiza.io) |
-| Go         | `/go`         | Server (Paiza.io) |
-| Ruby       | `/ruby`       | Server (Paiza.io) |
-| PHP        | `/php`        | Server (Paiza.io) |
-| SQL        | `/sql`        | Browser (SQLite)  |
+The editor ships **19 language runtimes** plus a dedicated HTML/CSS/JS sandbox.
+
+| Language    | URL Slug      | Execution                          |
+|-------------|---------------|------------------------------------|
+| HTML Sandbox| `/html`       | Browser iframe preview + console   |
+| Python 3    | `/python`     | Browser (Pyodide WASM)             |
+| JavaScript  | `/javascript` | Browser sandbox                    |
+| TypeScript  | `/typescript` | Browser TS compiler                |
+| C           | `/c`          | Server (Paiza.io — GCC)            |
+| C++         | `/cpp`        | Server (Paiza.io — G++)            |
+| Java        | `/java`       | Server (Paiza.io — JDK)            |
+| Rust        | `/rust`       | Server (Paiza.io — rustc)          |
+| Go          | `/go`         | Server (Paiza.io — go)             |
+| Ruby        | `/ruby`       | Server (Paiza.io — ruby)           |
+| PHP         | `/php`        | Server (Paiza.io — php)            |
+| SQL (SQLite)| `/sql`        | Browser (sql.js WASM)              |
+| Swift       | `/swift`      | Server (Paiza.io — swift)          |
+| Kotlin      | `/kotlin`     | Server (Paiza.io — kotlin)         |
+| C#          | `/csharp`     | Server (Paiza.io — csharp / Mono)  |
+| R           | `/r`          | Server (Paiza.io — R)              |
+| Perl        | `/perl`       | Server (Paiza.io — perl)           |
+| Scala       | `/scala`      | Server (Paiza.io — scala)          |
+| Haskell     | `/haskell`    | Server (Paiza.io — GHC)            |
+| Lua         | `/lua`        | Browser (fengari WASM)             |
+
+> Server-side languages need outbound internet to `api.paiza.io`. Browser runtimes (Python, JS, TS, SQL, Lua) work fully offline after the first load.
 
 ---
 
@@ -505,27 +518,30 @@ frame-src https://o2code.vercel.app;
 
 ---
 
-### Q: Python / Java / C++ shows "fetch failed" or "Error"?
+### Q: Java / C++ / Rust / Go (or any server-side language) shows "fetch failed" or "Error"?
 
 **A:** Server-side languages need internet. Check:
 1. Internet connection is active
 2. `api.paiza.io` is reachable from your network
 3. If self-hosting: ensure outbound HTTPS is not blocked by firewall
+4. The 25 s request timeout may have been hit — split long-running code into smaller pieces
+
+Python, JavaScript, TypeScript, SQL, and Lua are all client-side and don't need a network round-trip.
 
 ---
 
 ### Q: Which languages work offline?
 
-| Language   | Works Offline? |
-|------------|----------------|
-| JavaScript | ✅ Yes          |
-| TypeScript | ✅ Yes          |
-| SQL        | ✅ Yes          |
-| Python     | ❌ Needs internet|
-| Java       | ❌ Needs internet|
-| C / C++    | ❌ Needs internet|
-| Go / Rust  | ❌ Needs internet|
-| Ruby / PHP | ❌ Needs internet|
+| Language                            | Works Offline? |
+|-------------------------------------|----------------|
+| JavaScript                          | ✅ Yes (after first load) |
+| TypeScript                          | ✅ Yes (after first load) |
+| SQL (SQLite)                        | ✅ Yes (after first load) |
+| Lua                                 | ✅ Yes (after first load) |
+| Python                              | ✅ Yes (after first load — needs CDN for Pyodide on first run only) |
+| Java / C / C++ / Go / Rust          | ❌ Needs internet (server-side Paiza.io) |
+| Ruby / PHP / Swift / Kotlin / C#    | ❌ Needs internet (server-side Paiza.io) |
+| R / Perl / Scala / Haskell          | ❌ Needs internet (server-side Paiza.io) |
 
 ---
 
@@ -534,8 +550,10 @@ frame-src https://o2code.vercel.app;
 ```
 Base URL:   https://o2code.vercel.app
 
-Languages:  /python  /javascript  /typescript  /c  /cpp
-            /java    /rust        /go          /ruby  /php  /sql
+Languages:  /html  /python  /javascript  /typescript  /c  /cpp
+            /java  /rust    /go          /ruby        /php  /sql
+            /swift /kotlin  /csharp      /r           /perl /scala
+            /haskell  /lua
 
 URL Params:
   code=<base64>   Pre-load source code (Base64 encoded)
