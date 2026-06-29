@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useRef, useState, useCallback, useEffect } from "react"
+import { memo, useEffect, useMemo, useRef, useState, useCallback } from "react"
 
 interface SyntaxHighlighterProps {
   code: string
@@ -36,30 +36,35 @@ const LIGHT_TOKENS: Record<string, string> = {
   regex: "#A16207", important: "#A16207", deleted: "#DC2626",
 }
 
+const MONO_FONT =
+  "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace"
+
+const LINE_HEIGHT = "1.5"
+
 type Token = { type: string; text: string }
+
+// ─── Tokenizers (pure functions, kept module-level so they aren't recreated per render) ───
 
 function tokenizeJavaScript(code: string): Token[] {
   const tokens: Token[] = []
   let i = 0
   while (i < code.length) {
-    // Single-line comment
     if (code[i] === "/" && code[i + 1] === "/") {
       const end = code.indexOf("\n", i)
       tokens.push({ type: "comment", text: code.slice(i, end === -1 ? code.length : end + 1) })
       i = end === -1 ? code.length : end + 1
       continue
     }
-    // Multi-line comment
     if (code[i] === "/" && code[i + 1] === "*") {
       const end = code.indexOf("*/", i + 2)
       tokens.push({ type: "comment", text: code.slice(i, end === -1 ? code.length : end + 2) })
       i = end === -1 ? code.length : end + 2
       continue
     }
-    // String (double quote)
-    if (code[i] === '"') {
+    if (code[i] === '"' || code[i] === "'" || code[i] === "`") {
+      const quote = code[i]
       let end = i + 1
-      while (end < code.length && code[end] !== '"') {
+      while (end < code.length && code[end] !== quote) {
         if (code[end] === "\\") end++
         end++
       }
@@ -67,42 +72,18 @@ function tokenizeJavaScript(code: string): Token[] {
       i = Math.min(end + 1, code.length)
       continue
     }
-    // String (single quote)
-    if (code[i] === "'") {
-      let end = i + 1
-      while (end < code.length && code[end] !== "'") {
-        if (code[end] === "\\") end++
-        end++
-      }
-      tokens.push({ type: "string", text: code.slice(i, Math.min(end + 1, code.length)) })
-      i = Math.min(end + 1, code.length)
-      continue
-    }
-    // Template literal
-    if (code[i] === "`") {
-      let end = i + 1
-      while (end < code.length && code[end] !== "`") {
-        if (code[end] === "\\") end++
-        end++
-      }
-      tokens.push({ type: "string", text: code.slice(i, Math.min(end + 1, code.length)) })
-      i = Math.min(end + 1, code.length)
-      continue
-    }
-    // Regex
     if (code[i] === "/" && i > 0 && /[(\[=!+\-*/%&|^~?:,;]\s*$/.test(code.slice(0, i))) {
       let end = i + 1
       while (end < code.length && code[end] !== "/") {
         if (code[end] === "\\") end++
         end++
       }
-      end++ // closing /
+      end++
       while (end < code.length && /[gimsuy]/.test(code[end])) end++
       tokens.push({ type: "regex", text: code.slice(i, end) })
       i = end
       continue
     }
-    // Number
     if (/[0-9]/.test(code[i]) || (code[i] === "." && i + 1 < code.length && /[0-9]/.test(code[i + 1]))) {
       let end = i
       if (code[end] === "0" && (code[end + 1] === "x" || code[end + 1] === "X")) {
@@ -115,7 +96,6 @@ function tokenizeJavaScript(code: string): Token[] {
       i = end
       continue
     }
-    // Word (keyword, boolean, function, builtin, etc)
     if (/[a-zA-Z_$]/.test(code[i])) {
       let end = i
       while (end < code.length && /[a-zA-Z0-9_$]/.test(code[end])) end++
@@ -137,87 +117,34 @@ function tokenizeJavaScript(code: string): Token[] {
   return tokens
 }
 
-function tokenizeCode(code: string, lang: string): string {
-  const lines = code.split("\n")
-  const result: string[] = []
+const LANG_COMMENTS: Record<string, { line: string[]; block: string[] }> = {
+  javascript: { line: ["//"], block: ["/*", "*/"] },
+  typescript: { line: ["//"], block: ["/*", "*/"] },
+  python: { line: ["#"], block: ['"""', '"""'] },
+  c: { line: ["//"], block: ["/*", "*/"] },
+  cpp: { line: ["//"], block: ["/*", "*/"] },
+  java: { line: ["//"], block: ["/*", "*/"] },
+  rust: { line: ["//"], block: ["/*", "*/"] },
+  go: { line: ["//"], block: ["/*", "*/"] },
+  ruby: { line: ["#"], block: ["=begin", "=end"] },
+  php: { line: ["//", "#"], block: ["/*", "*/"] },
+}
 
-  const LANG_COMMENTS: Record<string, { line: string[]; block: string[] }> = {
-    javascript: { line: ["//"], block: ["/*", "*/"] },
-    typescript: { line: ["//"], block: ["/*", "*/"] },
-    python: { line: ["#"], block: ['"""', '"""'] },
-    c: { line: ["//"], block: ["/*", "*/"] },
-    cpp: { line: ["//"], block: ["/*", "*/"] },
-    java: { line: ["//"], block: ["/*", "*/"] },
-    rust: { line: ["//"], block: ["/*", "*/"] },
-    go: { line: ["//"], block: ["/*", "*/"] },
-    ruby: { line: ["#"], block: ["=begin", "=end"] },
-    php: { line: ["//", "#"], block: ["/*", "*/"] },
-  }
+const LANG_KEYWORDS: Record<string, string[]> = {
+  c: ["auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "int", "long", "register", "return", "short", "signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "include", "define"],
+  cpp: ["auto", "break", "case", "catch", "char", "class", "const", "constexpr", "continue", "default", "delete", "do", "double", "else", "enum", "explicit", "export", "extern", "float", "for", "friend", "goto", "if", "inline", "int", "long", "namespace", "new", "noexcept", "operator", "override", "private", "protected", "public", "register", "return", "short", "signed", "sizeof", "static", "struct", "switch", "template", "this", "throw", "try", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "while", "include", "define"],
+  java: ["abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while"],
+  rust: ["as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return", "self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use", "where", "while"],
+  go: ["break", "case", "chan", "const", "continue", "default", "defer", "else", "fallthrough", "for", "func", "go", "goto", "if", "import", "interface", "map", "package", "range", "return", "select", "struct", "switch", "type", "var"],
+  ruby: ["begin", "break", "case", "class", "def", "do", "else", "elsif", "end", "ensure", "false", "for", "if", "in", "module", "next", "nil", "raise", "rescue", "return", "self", "super", "then", "true", "undef", "unless", "until", "when", "while", "yield"],
+  php: ["abstract", "as", "break", "case", "catch", "class", "clone", "const", "continue", "declare", "default", "die", "do", "echo", "else", "elseif", "empty", "enddeclare", "endfor", "endforeach", "endif", "endswitch", "endwhile", "extends", "final", "finally", "for", "foreach", "function", "global", "goto", "if", "implements", "include", "instanceof", "interface", "isset", "list", "namespace", "new", "print", "private", "protected", "public", "return", "static", "switch", "throw", "trait", "try", "unset", "use", "var", "while"],
+  python: ["False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"],
+}
 
-  const LANG_KEYWORDS: Record<string, string[]> = {
-    c: ["auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "int", "long", "register", "return", "short", "signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "include", "define"],
-    cpp: ["auto", "break", "case", "catch", "char", "class", "const", "constexpr", "continue", "default", "delete", "do", "double", "else", "enum", "explicit", "export", "extern", "float", "for", "friend", "goto", "if", "inline", "int", "long", "namespace", "new", "noexcept", "operator", "override", "private", "protected", "public", "register", "return", "short", "signed", "sizeof", "static", "struct", "switch", "template", "this", "throw", "try", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "while", "include", "define"],
-    java: ["abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while"],
-    rust: ["as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return", "self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use", "where", "while"],
-    go: ["break", "case", "chan", "const", "continue", "default", "defer", "else", "fallthrough", "for", "func", "go", "goto", "if", "import", "interface", "map", "package", "range", "return", "select", "struct", "switch", "type", "var"],
-    ruby: ["begin", "break", "case", "class", "def", "do", "else", "elsif", "end", "ensure", "false", "for", "if", "in", "module", "next", "nil", "raise", "rescue", "return", "self", "super", "then", "true", "undef", "unless", "until", "when", "while", "yield"],
-    php: ["abstract", "as", "break", "case", "catch", "class", "clone", "const", "continue", "declare", "default", "die", "do", "echo", "else", "elseif", "empty", "enddeclare", "endfor", "endforeach", "endif", "endswitch", "endwhile", "extends", "final", "finally", "for", "foreach", "function", "global", "goto", "if", "implements", "include", "instanceof", "interface", "isset", "list", "namespace", "new", "print", "private", "protected", "public", "return", "static", "switch", "throw", "trait", "try", "unset", "use", "var", "while"],
-    python: ["False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"],
-  }
-
-  const LANG_BUILTINS: Record<string, string[]> = {
-    python: ["print", "len", "range", "int", "str", "float", "list", "dict", "set", "tuple", "type", "input", "open", "map", "filter", "zip", "enumerate", "sorted", "reversed", "abs", "max", "min", "sum", "any", "all", "isinstance", "hasattr"],
-    javascript: ["console", "Math", "JSON", "parseInt", "parseFloat", "setTimeout", "setInterval", "fetch", "document", "window", "Array", "Object", "String", "Number", "Boolean", "Promise", "Map", "Set"],
-    typescript: ["console", "Math", "JSON", "parseInt", "parseFloat", "setTimeout", "setInterval", "fetch", "document", "window", "Array", "Object", "String", "Number", "Boolean", "Promise", "Map", "Set"],
-  }
-
-  const comments = LANG_COMMENTS[lang] || { line: ["#"], block: ["/*", "*/"] }
-
-  for (const line of lines) {
-    let start = 0
-    const parts: string[] = []
-
-    // Block comments
-    const blockIdx = line.indexOf(comments.block[0])
-    if (blockIdx !== -1) {
-      parts.push(htmlEscape(line.slice(0, blockIdx)))
-      parts.push(`<span class="se-token se-comment">${htmlEscape(line.slice(blockIdx))}</span>`)
-      result.push(parts.join(""))
-      continue
-    }
-
-    // Line comments
-    let minCommentIdx = -1
-    for (const lc of comments.line) {
-      const idx = line.indexOf(lc)
-      if (idx !== -1 && (minCommentIdx === -1 || idx < minCommentIdx)) {
-        minCommentIdx = idx
-      }
-    }
-
-    let codePart = line
-    let commentPart = ""
-    if (minCommentIdx !== -1) {
-      codePart = line.slice(0, minCommentIdx)
-      commentPart = line.slice(minCommentIdx)
-    }
-
-    // Tokenize the code part using JS tokenizer for all langs as a fallback
-    let codeHtml = ""
-    if (lang === "javascript" || lang === "typescript") {
-      codeHtml = renderTokens(tokenizeJavaScript(codePart))
-    } else {
-      codeHtml = tokenizeKeywords(codePart, LANG_KEYWORDS[lang] || [], LANG_BUILTINS[lang] || [])
-    }
-
-    if (commentPart) {
-      codeHtml += `<span class="se-token se-comment">${htmlEscape(commentPart)}</span>`
-    }
-
-    result.push(codeHtml)
-  }
-
-  return result.join("\n")
+const LANG_BUILTINS: Record<string, string[]> = {
+  python: ["print", "len", "range", "int", "str", "float", "list", "dict", "set", "tuple", "type", "input", "open", "map", "filter", "zip", "enumerate", "sorted", "reversed", "abs", "max", "min", "sum", "any", "all", "isinstance", "hasattr"],
+  javascript: ["console", "Math", "JSON", "parseInt", "parseFloat", "setTimeout", "setInterval", "fetch", "document", "window", "Array", "Object", "String", "Number", "Boolean", "Promise", "Map", "Set"],
+  typescript: ["console", "Math", "JSON", "parseInt", "parseFloat", "setTimeout", "setInterval", "fetch", "document", "window", "Array", "Object", "String", "Number", "Boolean", "Promise", "Map", "Set"],
 }
 
 function htmlEscape(text: string): string {
@@ -225,10 +152,12 @@ function htmlEscape(text: string): string {
 }
 
 function renderTokens(tokens: Token[]): string {
-  return tokens.map(t => {
-    if (t.type === "variable") return htmlEscape(t.text)
-    return `<span class="se-token se-${t.type}">${htmlEscape(t.text)}</span>`
-  }).join("")
+  const parts: string[] = []
+  for (const t of tokens) {
+    if (t.type === "variable") parts.push(htmlEscape(t.text))
+    else parts.push(`<span class="se-token se-${t.type}">${htmlEscape(t.text)}</span>`)
+  }
+  return parts.join("")
 }
 
 function tokenizeKeywords(code: string, keywords: string[], builtins: string[]): string {
@@ -275,7 +204,57 @@ function tokenizeKeywords(code: string, keywords: string[], builtins: string[]):
   return parts.join("")
 }
 
-export default function SyntaxHighlighter({
+function tokenizeCode(code: string, lang: string): string {
+  if (!code) return ""
+  const lines = code.split("\n")
+  const result: string[] = []
+  const comments = LANG_COMMENTS[lang] || { line: ["#"], block: ["/*", "*/"] }
+
+  for (const line of lines) {
+    // Block comment on this line — short-circuit
+    const blockIdx = line.indexOf(comments.block[0])
+    if (blockIdx !== -1) {
+      result.push(
+        htmlEscape(line.slice(0, blockIdx)) +
+          `<span class="se-token se-comment">${htmlEscape(line.slice(blockIdx))}</span>`,
+      )
+      continue
+    }
+
+    let minCommentIdx = -1
+    for (const lc of comments.line) {
+      const idx = line.indexOf(lc)
+      if (idx !== -1 && (minCommentIdx === -1 || idx < minCommentIdx)) {
+        minCommentIdx = idx
+      }
+    }
+
+    let codePart = line
+    let commentPart = ""
+    if (minCommentIdx !== -1) {
+      codePart = line.slice(0, minCommentIdx)
+      commentPart = line.slice(minCommentIdx)
+    }
+
+    let codeHtml: string
+    if (lang === "javascript" || lang === "typescript") {
+      codeHtml = renderTokens(tokenizeJavaScript(codePart))
+    } else {
+      codeHtml = tokenizeKeywords(codePart, LANG_KEYWORDS[lang] || [], LANG_BUILTINS[lang] || [])
+    }
+
+    if (commentPart) {
+      codeHtml += `<span class="se-token se-comment">${htmlEscape(commentPart)}</span>`
+    }
+    result.push(codeHtml)
+  }
+
+  return result.join("\n")
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+function SyntaxHighlighterImpl({
   code,
   language,
   onChange,
@@ -292,6 +271,7 @@ export default function SyntaxHighlighter({
   const [isFocused, setIsFocused] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  // Mobile detection — bind once, not per render
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
@@ -299,31 +279,75 @@ export default function SyntaxHighlighter({
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  const syncScroll = useCallback(() => {
+  // Theme-derived color tokens — rebuild only when theme changes
+  const tokenColors = useMemo(
+    () => (theme === "dark" ? DARK_TOKENS : LIGHT_TOKENS),
+    [theme],
+  )
+
+  // Style sheet for the highlight spans — rebuild only when tokens change
+  const cssRules = useMemo(
+    () =>
+      Object.entries(tokenColors)
+        .map(([token, color]) => `.se-token.se-${token}{color:${color}!important}`)
+        .join("\n"),
+    [tokenColors],
+  )
+
+  // Visual constants — rebuild only when their inputs change
+  const font = useMemo(
+    () => `${isMobile ? Math.max(fontSize - 2, 12) : fontSize}px`,
+    [fontSize, isMobile],
+  )
+  const pad = useMemo(() => (isMobile ? "12px" : "16px"), [isMobile])
+  const ws = wordWrap ? "pre-wrap" : "pre"
+  const wb = wordWrap ? "break-word" : "normal"
+  const baseColor = theme === "dark" ? "#f4f4f5" : "#18181b"
+  const bgColor = theme === "dark" ? "#09090b" : "#ffffff"
+  const borderColor = theme === "dark" ? "#27272a" : "#e4e4e7"
+  const caretColor = theme === "dark" ? "#818cf8" : "#4f46e5"
+
+  // THE BIG ONE: only re-tokenize when code or language changes
+  const highlightedHtml = useMemo(() => tokenizeCode(code, language), [code, language])
+
+  // ── Scroll sync — bind once, read latest refs via a stable callback ──
+  const onScrollRef = useRef<() => void>(() => {})
+  onScrollRef.current = () => {
     const textarea = textareaRef.current
     const pre = preRef.current
     const lineNums = lineNumbersRef.current
     if (!textarea || !pre) return
     pre.scrollTop = textarea.scrollTop
     pre.scrollLeft = textarea.scrollLeft
-    if (lineNums) {
-      lineNums.scrollTop = textarea.scrollTop
-    }
+    if (lineNums) lineNums.scrollTop = textarea.scrollTop
+  }
+
+  // Stable, no-deps callback so it can be attached once on mount
+  const handleScrollSync = useCallback(() => {
+    onScrollRef.current()
   }, [])
 
+  // Bind scroll listeners exactly once for the lifetime of the component.
+  // Re-binding per keystroke (the previous behavior) was the worst hot spot
+  // in this component.
   useEffect(() => {
     const textarea = textareaRef.current
     if (!textarea) return
     const events = ["scroll", "input", "keyup", "mouseup", "touchend"]
-    events.forEach((e) => textarea.addEventListener(e, syncScroll, { passive: true }))
-    syncScroll()
-    return () => events.forEach((e) => textarea.removeEventListener(e, syncScroll))
-  }, [syncScroll, code])
+    const handler = () => onScrollRef.current()
+    events.forEach((e) => textarea.addEventListener(e, handler, { passive: true }))
+    // initial sync
+    onScrollRef.current()
+    return () => events.forEach((e) => textarea.removeEventListener(e, handler))
+  }, [])
 
+  // After code changes, re-sync once after the DOM updates
   useEffect(() => {
-    setTimeout(syncScroll, 0)
-  }, [code, syncScroll])
+    const id = setTimeout(() => onScrollRef.current(), 0)
+    return () => clearTimeout(id)
+  }, [code])
 
+  // ── Editor key handling (tab / auto-indent / bracket close) ──
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const textarea = e.target as HTMLTextAreaElement
@@ -332,26 +356,34 @@ export default function SyntaxHighlighter({
       if (e.key === "Tab") {
         e.preventDefault()
         const indent = "  "
-        const newValue = value.substring(0, selectionStart) + indent + value.substring(selectionEnd)
+        const newValue =
+          value.substring(0, selectionStart) + indent + value.substring(selectionEnd)
         onChange(newValue)
         setTimeout(() => {
           textarea.selectionStart = textarea.selectionEnd = selectionStart + indent.length
-          syncScroll()
+          onScrollRef.current()
         }, 0)
       } else if (e.key === "Enter") {
         const lines = value.substring(0, selectionStart).split("\n")
         const currentLine = lines[lines.length - 1]
         const indent = currentLine.match(/^\s*/)?.[0] || ""
         const extraIndent =
-          currentLine.trim().endsWith("{") || currentLine.trim().endsWith(":") || currentLine.trim().endsWith("(")
+          currentLine.trim().endsWith("{") ||
+          currentLine.trim().endsWith(":") ||
+          currentLine.trim().endsWith("(")
             ? "  "
             : ""
         const newIndent = indent + extraIndent
-        const newValue = value.substring(0, selectionStart) + "\n" + newIndent + value.substring(selectionEnd)
+        const newValue =
+          value.substring(0, selectionStart) +
+          "\n" +
+          newIndent +
+          value.substring(selectionEnd)
         onChange(newValue)
         setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + 1 + newIndent.length
-          syncScroll()
+          textarea.selectionStart = textarea.selectionEnd =
+            selectionStart + 1 + newIndent.length
+          onScrollRef.current()
         }, 0)
         e.preventDefault()
       } else if (["(", "[", "{", '"', "'", "`"].includes(e.key)) {
@@ -361,64 +393,80 @@ export default function SyntaxHighlighter({
         const closing = closingBrackets[e.key]
         if (closing && selectionStart === selectionEnd) {
           e.preventDefault()
-          const newValue = value.substring(0, selectionStart) + e.key + closing + value.substring(selectionEnd)
+          const newValue =
+            value.substring(0, selectionStart) + e.key + closing + value.substring(selectionEnd)
           onChange(newValue)
           setTimeout(() => {
             textarea.selectionStart = textarea.selectionEnd = selectionStart + 1
-            syncScroll()
+            onScrollRef.current()
           }, 0)
         }
       }
     },
-    [onChange, syncScroll],
+    [onChange],
   )
 
-  const generateLineNumbers = useCallback(() => {
+  const onTextareaChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChange(e.target.value)
+    },
+    [onChange],
+  )
+
+  // Line numbers — separate memo so the highlight recompute doesn't churn it
+  const lineNumbersNode = useMemo(() => {
+    if (!lineNumbers) return null
     const lines = code.split("\n")
     const lineHeight = fontSize * 1.5
     const paddingTop = isMobile ? 12 : 16
+    const numberColor = theme === "dark" ? "#52525b" : "#a1a1aa"
+    const lnWidth = isMobile ? "2.5rem" : "3rem"
+    const lnPadRight = isMobile ? "8px" : "12px"
 
     return (
-      <div style={{
-        lineHeight: "1.5",
-        paddingTop: `${paddingTop}px`,
-        fontSize: `${fontSize}px`,
-        fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace",
-      }}>
-        {lines.map((_, i) => (
-          <div key={i} style={{
-            color: theme === "dark" ? "#52525b" : "#a1a1aa",
-            userSelect: "none", textAlign: "right",
-            paddingRight: isMobile ? "8px" : "12px",
-            minWidth: isMobile ? "2.5rem" : "3rem",
-            height: `${lineHeight}px`, display: "flex",
-            alignItems: "flex-start", justifyContent: "flex-end",
-            boxSizing: "border-box", margin: 0, border: 0,
-          }}>
-            {i + 1}
-          </div>
-        ))}
+      <div
+        ref={lineNumbersRef}
+        className="flex-shrink-0 border-r"
+        style={{
+          borderColor,
+          backgroundColor: bgColor,
+          overflow: "hidden",
+          width: isMobile ? "3rem" : "4rem",
+        }}
+      >
+        <div
+          style={{
+            lineHeight: LINE_HEIGHT,
+            paddingTop: `${paddingTop}px`,
+            fontSize: `${fontSize}px`,
+            fontFamily: MONO_FONT,
+          }}
+        >
+          {lines.map((_, i) => (
+            <div
+              key={i}
+              style={{
+                color: numberColor,
+                userSelect: "none",
+                textAlign: "right",
+                paddingRight: lnPadRight,
+                minWidth: lnWidth,
+                height: `${lineHeight}px`,
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "flex-end",
+                boxSizing: "border-box",
+                margin: 0,
+                border: 0,
+              }}
+            >
+              {i + 1}
+            </div>
+          ))}
+        </div>
       </div>
     )
-  }, [code, fontSize, theme, isMobile])
-
-  const tokenColors = theme === "dark" ? DARK_TOKENS : LIGHT_TOKENS
-  const font = `${isMobile ? Math.max(fontSize - 2, 12) : fontSize}px`
-  const mono = "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace"
-  const lh = "1.5"
-  const pad = isMobile ? "12px" : "16px"
-  const ws = wordWrap ? "pre-wrap" : "pre"
-  const wb = wordWrap ? "break-word" : "normal"
-
-  const cssRules = Object.entries(tokenColors)
-    .map(([token, color]) => `.se-token.se-${token}{color:${color}!important}`)
-    .join("\n")
-
-  const baseColor = theme === "dark" ? "#f4f4f5" : "#18181b"
-  const bgColor = theme === "dark" ? "#09090b" : "#ffffff"
-  const borderColor = theme === "dark" ? "#27272a" : "#e4e4e7"
-
-  const highlightedHtml = tokenizeCode(code, language)
+  }, [code, fontSize, isMobile, theme, lineNumbers, borderColor, bgColor])
 
   return (
     <div
@@ -429,20 +477,7 @@ export default function SyntaxHighlighter({
       <style dangerouslySetInnerHTML={{ __html: cssRules }} />
 
       <div className="flex flex-1 overflow-hidden">
-        {lineNumbers && (
-          <div
-            ref={lineNumbersRef}
-            className="flex-shrink-0 border-r"
-            style={{
-              borderColor: borderColor,
-              backgroundColor: bgColor,
-              overflow: "hidden",
-              width: isMobile ? "3rem" : "4rem",
-            }}
-          >
-            {generateLineNumbers()}
-          </div>
-        )}
+        {lineNumbersNode}
 
         <div className="flex-1 relative overflow-hidden" style={{ backgroundColor: bgColor }}>
           {/* Highlighted code layer */}
@@ -450,12 +485,25 @@ export default function SyntaxHighlighter({
             ref={preRef}
             aria-hidden="true"
             style={{
-              fontSize: font, lineHeight: lh, padding: pad,
-              whiteSpace: ws, wordBreak: wb, fontFamily: mono,
-              margin: 0, border: 0, overflow: "hidden",
-              height: "100%", width: "100%", boxSizing: "border-box", tabSize: 2,
+              fontSize: font,
+              lineHeight: LINE_HEIGHT,
+              padding: pad,
+              whiteSpace: ws,
+              wordBreak: wb,
+              fontFamily: MONO_FONT,
+              margin: 0,
+              border: 0,
+              overflow: "hidden",
+              height: "100%",
+              width: "100%",
+              boxSizing: "border-box",
+              tabSize: 2,
               color: baseColor,
-              position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               pointerEvents: "none",
             }}
           >
@@ -466,38 +514,51 @@ export default function SyntaxHighlighter({
           <textarea
             ref={textareaRef}
             value={code}
-            onChange={(e) => {
-              onChange(e.target.value)
-              setTimeout(syncScroll, 0)
-            }}
+            onChange={onTextareaChange}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            onScroll={syncScroll}
+            onScroll={handleScrollSync}
             className="w-full h-full resize-none border-0 outline-none"
             style={{
-              fontSize: font, lineHeight: lh, padding: pad,
-              whiteSpace: ws, wordBreak: wb, fontFamily: mono,
-              margin: 0, border: 0, overflow: "auto",
-              height: "100%", width: "100%", boxSizing: "border-box", tabSize: 2,
+              fontSize: font,
+              lineHeight: LINE_HEIGHT,
+              padding: pad,
+              whiteSpace: ws,
+              wordBreak: wb,
+              fontFamily: MONO_FONT,
+              margin: 0,
+              border: 0,
+              overflow: "auto",
+              height: "100%",
+              width: "100%",
+              boxSizing: "border-box",
+              tabSize: 2,
               color: "transparent",
-              caretColor: theme === "dark" ? "#818cf8" : "#4f46e5",
+              caretColor,
               backgroundColor: "transparent",
-              position: "relative", zIndex: 1,
+              position: "relative",
+              zIndex: 1,
             }}
-            spellCheck="false" autoComplete="off" autoCorrect="off" autoCapitalize="off"
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             placeholder={`Start typing your ${language.toUpperCase()} code...`}
           />
         </div>
       </div>
 
       {isFocused && (
-        <div
-          className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider shadow-sm z-10 border border-border bg-accent text-muted-foreground uppercase"
-        >
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider shadow-sm z-10 border border-border bg-accent text-muted-foreground uppercase">
           {language}
         </div>
       )}
     </div>
   )
 }
+
+// `memo` so when parent re-renders for non-editor reasons (status, output,
+// etc.) the editor's render is skipped as long as its props are unchanged.
+const SyntaxHighlighter = memo(SyntaxHighlighterImpl)
+export default SyntaxHighlighter

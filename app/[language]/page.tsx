@@ -4,7 +4,7 @@ import React, { use, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SidebarNav from "@/components/sidebar-nav";
-import { SettingsProvider, useSettings } from "@/contexts/settings-context";
+import { useSettings } from "@/contexts/settings-context";
 import SyntaxHighlighter from "@/components/syntax-highlighter";
 import {
   Play,
@@ -174,6 +174,89 @@ echo "O2 code is working for PHP!\\n";
 SELECT 'O2 code is working for SQL!' AS status;
 `,
   },
+  swift: {
+    id: "swift", name: "Swift", filename: "main.swift", extension: "swift",
+    color: "text-[#F05138]", bgAccent: "bg-[#F05138]/10 border-[#F05138]/20",
+    brandColor: "#F05138",
+    clientSide: false,
+    template: `// Swift on O2 code
+print("O2 code is working for Swift!")
+`,
+  },
+  kotlin: {
+    id: "kotlin", name: "Kotlin", filename: "Main.kt", extension: "kt",
+    color: "text-[#7F52FF]", bgAccent: "bg-[#7F52FF]/10 border-[#7F52FF]/20",
+    brandColor: "#7F52FF",
+    clientSide: false,
+    template: `// Kotlin on O2 code
+fun main() {
+    println("O2 code is working for Kotlin!")
+}
+`,
+  },
+  csharp: {
+    id: "csharp", name: "C#", filename: "Program.cs", extension: "cs",
+    color: "text-[#512BD4]", bgAccent: "bg-[#512BD4]/10 border-[#512BD4]/20",
+    brandColor: "#512BD4",
+    clientSide: false,
+    template: `// C# on O2 code
+using System;
+
+class Program {
+    static void Main() {
+        Console.WriteLine("O2 code is working for C#!");
+    }
+}
+`,
+  },
+  r: {
+    id: "r", name: "R", filename: "main.r", extension: "r",
+    color: "text-[#276DC3]", bgAccent: "bg-[#276DC3]/10 border-[#276DC3]/20",
+    brandColor: "#276DC3",
+    clientSide: false,
+    template: `# R on O2 code
+cat("O2 code is working for R!\\n")
+`,
+  },
+  perl: {
+    id: "perl", name: "Perl", filename: "main.pl", extension: "pl",
+    color: "text-[#39457E]", bgAccent: "bg-[#39457E]/10 border-[#39457E]/20",
+    brandColor: "#39457E",
+    clientSide: false,
+    template: `# Perl on O2 code
+print "O2 code is working for Perl!\\n";
+`,
+  },
+  scala: {
+    id: "scala", name: "Scala", filename: "Main.scala", extension: "scala",
+    color: "text-[#DC322F]", bgAccent: "bg-[#DC322F]/10 border-[#DC322F]/20",
+    brandColor: "#DC322F",
+    clientSide: false,
+    template: `// Scala on O2 code
+object Main extends App {
+    println("O2 code is working for Scala!")
+}
+`,
+  },
+  haskell: {
+    id: "haskell", name: "Haskell", filename: "main.hs", extension: "hs",
+    color: "text-[#5E5086]", bgAccent: "bg-[#5E5086]/10 border-[#5E5086]/20",
+    brandColor: "#5E5086",
+    clientSide: false,
+    template: `-- Haskell on O2 code
+main :: IO ()
+main = putStrLn "O2 code is working for Haskell!"
+`,
+  },
+  lua: {
+    id: "lua", name: "Lua", filename: "main.lua", extension: "lua",
+    color: "text-[#000080]", bgAccent: "bg-[#000080]/10 border-[#000080]/20",
+    brandColor: "#000080",
+    clientSide: true,
+    template: `-- Lua on O2 code
+print("O2 code is working for Lua!")
+`,
+  },
 };
 
 // ─── Interactive terminal marker ───────────────────────────────────────────
@@ -293,60 +376,37 @@ let pyodideInstance: any = null;
 let pyodideLoading: Promise<any> | null = null;
 
 async function loadPyodide(): Promise<any> {
-  if (pyodideInstance) {
-    console.log("loadPyodide: returning cached pyodideInstance");
-    return pyodideInstance;
-  }
-  if (pyodideLoading) {
-    console.log("loadPyodide: returning existing pyodideLoading promise");
-    return pyodideLoading;
-  }
+  if (pyodideInstance) return pyodideInstance;
+  if (pyodideLoading) return pyodideLoading;
 
-  console.log("loadPyodide: starting script download/initialization...");
   pyodideLoading = new Promise<any>((resolve, reject) => {
-    if ((window as any).loadPyodide) {
-      console.log("loadPyodide: window.loadPyodide is already defined, invoking directly...");
-      (window as any).loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" })
-        .then((p: any) => {
-          console.log("loadPyodide: pyodide loaded successfully (direct)");
-          pyodideInstance = p;
-          pyodideLoading = null;
-          resolve(p);
-        })
-        .catch((e: any) => {
-          console.error("loadPyodide: pyodide load failed (direct):", e);
-          pyodideLoading = null;
-          reject(e);
-        });
-      return;
-    }
-
-    console.log("loadPyodide: creating script tag for CDN load...");
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js";
-    s.onload = () => {
-      console.log("loadPyodide: CDN script onload triggered, invoking window.loadPyodide...");
+    const onLoaded = () => {
       if (!(window as any).loadPyodide) {
-        console.error("loadPyodide: window.loadPyodide is not defined after CDN script onload!");
         pyodideLoading = null;
         reject(new Error("Failed to find loadPyodide on window after script load"));
         return;
       }
       (window as any).loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" })
         .then((p: any) => {
-          console.log("loadPyodide: pyodide loaded successfully (CDN)");
           pyodideInstance = p;
           pyodideLoading = null;
           resolve(p);
         })
         .catch((e: any) => {
-          console.error("loadPyodide: pyodide load failed (CDN):", e);
           pyodideLoading = null;
           reject(e);
         });
     };
-    s.onerror = (err) => {
-      console.error("loadPyodide: CDN script loading error event:", err);
+
+    if ((window as any).loadPyodide) {
+      onLoaded();
+      return;
+    }
+
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js";
+    s.onload = onLoaded;
+    s.onerror = () => {
       pyodideLoading = null;
       reject(new Error("Failed to load Pyodide CDN script"));
     };
@@ -480,7 +540,7 @@ async function runSQLAsync(code: string): Promise<ExecutionResult> {
     };
     const SQL = await initSqlJs(config);
     const db = new SQL.Database();
-    
+
     // Execute all SQL statements
     const results = db.exec(code);
     const stdout = formatSqlResults(results);
@@ -497,6 +557,96 @@ async function runSQLAsync(code: string): Promise<ExecutionResult> {
       stderr: err.message || String(err),
       hasMarker: false,
     };
+  }
+}
+
+// ─── Lua via fengari (WebAssembly) ──────────────────────────────────────────
+
+let fengariInstance: any = null;
+let fengariLoading: Promise<any> | null = null;
+
+async function loadFengari(): Promise<any> {
+  if (fengariInstance) return fengariInstance;
+  if (fengariLoading) return fengariLoading;
+
+  fengariLoading = new Promise<any>((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://unpkg.com/fengari-web@0.1.4/dist/fengari-web.js";
+    s.onload = () => {
+      fengariInstance = (window as any).fengari;
+      fengariLoading = null;
+      resolve(fengariInstance);
+    };
+    s.onerror = () => {
+      fengariLoading = null;
+      reject(new Error("Failed to load fengari Lua runtime"));
+    };
+    document.head.appendChild(s);
+  });
+  return fengariLoading;
+}
+
+async function runLua(code: string): Promise<ExecutionResult> {
+  try {
+    const fengari = await loadFengari();
+    const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
+
+    if (!lua || !lauxlib || !lualib) {
+      return { stdout: "", stderr: "Fengari runtime failed to initialize - API structure not found", hasMarker: false };
+    }
+
+    const L = lauxlib.luaL_newstate();
+    if (!L) {
+      return { stdout: "", stderr: "Fengari failed to create Lua state", hasMarker: false };
+    }
+
+    lualib.luaL_openlibs(L);
+
+    let output = "";
+    const setupResult = lauxlib.luaL_dostring(L, to_luastring([
+      `_output = {}`,
+      `local old_print = print`,
+      `print = function(...)`,
+      `  local args = {...}`,
+      `  local s = ""`,
+      `  for i = 1, #args do`,
+      `    s = s .. tostring(args[i])`,
+      `    if i < #args then s = s .. "\\t" end`,
+      `  end`,
+      `  table.insert(_output, s)`,
+      `end`,
+    ].join("\n")));
+
+    if (setupResult !== 0) {
+      const err = lua.lua_tostring(L, -1);
+      lua.lua_close(L);
+      return { stdout: output, stderr: `Lua setup error: ${err ? to_jsstring(err) : "Unknown"}`, hasMarker: false };
+    }
+
+    const result = lauxlib.luaL_dostring(L, to_luastring(code));
+
+    lua.lua_getglobal(L, to_luastring("_output"));
+    if (!lua.lua_isnil(L, -1)) {
+      const len = lua.lua_rawlen(L, -1);
+      for (let i = 1; i <= len; i++) {
+        lua.lua_rawgeti(L, -1, i);
+        const line = lua.lua_tostring(L, -1);
+        if (line) output += to_jsstring(line) + "\n";
+        lua.lua_pop(L, 1);
+      }
+    }
+    lua.lua_pop(L, 1);
+
+    if (result !== 0) {
+      const err = lua.lua_tostring(L, -1);
+      lua.lua_close(L);
+      return { stdout: output, stderr: `Lua Error: ${err ? to_jsstring(err) : "Unknown error"}`, hasMarker: false };
+    }
+
+    lua.lua_close(L);
+    return { stdout: output || "Code executed successfully. (No output)", stderr: "", hasMarker: false };
+  } catch (err: any) {
+    return { stdout: "", stderr: err.message || String(err), hasMarker: false };
   }
 }
 
@@ -549,6 +699,30 @@ const hasInputCalls = (code: string, langKey: string): boolean => {
   if (langKey === "php") {
     return /\breadline\b|\bfgets\s*\(\s*STDIN/.test(codeClean);
   }
+  if (langKey === "swift") {
+    return /\breadLine\s*\(/.test(codeClean);
+  }
+  if (langKey === "kotlin") {
+    return /\breadLine\s*\(|\breadln\s*\(|\bScanner\b/.test(codeClean);
+  }
+  if (langKey === "csharp") {
+    return /Console\.ReadLine\s*\(|Console\.Read\s*\(/.test(codeClean);
+  }
+  if (langKey === "r") {
+    return /\breadline\s*\(|\breadLines\s*\(|\bscan\s*\(/.test(codeClean);
+  }
+  if (langKey === "perl") {
+    return /<>\s*|<STDIN>\s*|\breadline\s*\(/.test(codeClean);
+  }
+  if (langKey === "scala") {
+    return /StdIn\.readLine\s*\(|\breadLine\s*\(/.test(codeClean);
+  }
+  if (langKey === "haskell") {
+    return /\bgetLine\b|\bgetContents\b|\breadLn\b/.test(codeClean);
+  }
+  if (langKey === "lua") {
+    return /io\.read\s*\(|io\.lines\s*\(/.test(codeClean);
+  }
   return false;
 };
 
@@ -557,10 +731,10 @@ const endsWithPrompt = (output: string): boolean => {
   // A prompt usually ends with a colon, question mark, or arrow/greater-than, possibly followed by spaces, and does NOT end with a newline
   const trimmed = output.trimEnd();
   if (trimmed.length === 0) return false;
-  
+
   // If it ends with a newline, it's probably not waiting for input inline
   if (output.endsWith("\n")) return false;
-  
+
   // Check if it ends with common prompt characters: ':', '?', '>', '$'
   const lastChar = trimmed[trimmed.length - 1];
   return lastChar === ":" || lastChar === "?" || lastChar === ">" || lastChar === "$";
@@ -586,10 +760,255 @@ const isEOFError = (stderr: string, langKey: string): boolean => {
       return err.includes("eoferror");
     case "php":
       return err.includes("eof") || err.includes("fatal error");
+    case "swift":
+    case "kotlin":
+    case "csharp":
+    case "r":
+    case "perl":
+    case "scala":
+    case "haskell":
+    case "lua":
+      return err.includes("eoferror");
     default:
       return false;
   }
 };
+
+// ─── Workspace component (the editor + output body) ─────────────────────────
+// One component, three layouts: SSR placeholder / mobile tabs / desktop split.
+// Deduplicates what was previously a 3× repeated inline render tree.
+
+interface WorkspaceProps {
+  langKey: string;
+  langConfig: LangConfig;
+  mounted: boolean;
+  isMobileView: boolean;
+  code: string;
+  output: string;
+  status: StatusType;
+  interactiveMode: boolean;
+  interactiveInput: string;
+  setInteractiveInput: (v: string) => void;
+  activeTab: "editor" | "output";
+  setActiveTab: (t: "editor" | "output") => void;
+  copied: boolean;
+  handleCopyOutput: () => void;
+  handleClearOutput: () => void;
+  handleSubmitInput: () => void;
+  handleCtrlC: () => void;
+  handleKill: () => void;
+  saveCode: (c: string) => void;
+  interactiveInputRef: React.RefObject<HTMLInputElement | null>;
+  outputEndRef: React.RefObject<HTMLDivElement | null>;
+  theme: string;
+  fontSize: number;
+  lineNumbers: boolean;
+  wordWrap: boolean;
+}
+
+function Workspace({
+  langKey,
+  langConfig,
+  mounted,
+  isMobileView,
+  code,
+  output,
+  status,
+  interactiveMode,
+  interactiveInput,
+  setInteractiveInput,
+  activeTab,
+  setActiveTab,
+  copied,
+  handleCopyOutput,
+  handleClearOutput,
+  handleSubmitInput,
+  handleCtrlC,
+  handleKill,
+  saveCode,
+  interactiveInputRef,
+  outputEndRef,
+  theme,
+  fontSize,
+  lineNumbers,
+  wordWrap,
+}: WorkspaceProps) {
+  // Editor column — same markup across all three layouts, just wrapped in a Panel
+  // for the resizable variant.
+  const editorColumn = (
+    <div className="h-full flex flex-col overflow-hidden min-w-0">
+      <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+        <span style={{ color: langConfig.brandColor }}>◆</span>
+        <span className="ml-1.5">{langConfig.filename}</span>
+      </div>
+      <div className="flex-1 overflow-hidden p-0">
+        <SyntaxHighlighter
+          code={code}
+          language={langKey}
+          onChange={saveCode}
+          fontSize={fontSize}
+          lineNumbers={lineNumbers}
+          wordWrap={wordWrap}
+          theme={theme}
+          className="h-full rounded-none border-0"
+        />
+      </div>
+    </div>
+  );
+
+  // Output column — same markup across all three layouts.
+  const outputColumn = (
+    <div className="h-full flex flex-col overflow-hidden min-w-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+        <div className="flex items-center gap-1.5">
+          <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+            Output
+          </span>
+          {status === "running" && (
+            <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
+              Running
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {interactiveMode && (
+            <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Waiting for input
+            </span>
+          )}
+          <button
+            onClick={handleCopyOutput}
+            disabled={!output || status === "running"}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+            title="Copy output"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            onClick={handleClearOutput}
+            disabled={!output}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+            title="Clear output"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
+        style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
+        onClick={() => interactiveInputRef.current?.focus()}
+      >
+        {!output && !interactiveMode ? (
+          <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
+            <Terminal className="h-8 w-8" />
+            <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
+          </div>
+        ) : (
+          <div
+            className={
+              status === "error" && !interactiveMode
+                ? "text-rose-500 dark:text-rose-400"
+                : "text-foreground"
+            }
+            style={{ whiteSpace: "pre-wrap" }}
+          >
+            {output}
+            {interactiveMode && (
+              <span style={{ whiteSpace: "pre" }}>
+                <input
+                  ref={interactiveInputRef}
+                  type="text"
+                  value={interactiveInput}
+                  onChange={e => setInteractiveInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
+                    if (e.key === "c" && e.ctrlKey) handleCtrlC();
+                  }}
+                  spellCheck={false}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
+                  style={{
+                    width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
+                    minWidth: "2ch",
+                  }}
+                />
+                <span
+                  className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
+                  style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
+                />
+              </span>
+            )}
+          </div>
+        )}
+        <div ref={outputEndRef} />
+      </div>
+
+      {interactiveMode && (
+        <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="text-[10px] font-semibold text-emerald-500">
+            Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
+          </span>
+          <button
+            onClick={handleKill}
+            className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
+          >
+            Kill
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // Layout 1: SSR / pre-hydration — render a plain editor column with no resizing.
+  if (!mounted) {
+    return (
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">{editorColumn}</div>
+        <div className="hidden md:block w-px shrink-0 bg-border" />
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">{outputColumn}</div>
+      </div>
+    );
+  }
+
+  // Layout 2: mobile — single column with tab switcher.
+  if (isMobileView) {
+    return (
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
+        <div className={`flex-1 flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden"}`}>
+          {editorColumn}
+        </div>
+        <div className={`flex-1 flex-col overflow-hidden min-w-0 ${activeTab === "output" ? "flex" : "hidden"}`}>
+          {outputColumn}
+        </div>
+      </div>
+    );
+  }
+
+  // Layout 3: desktop — resizable split with drag handle.
+  return (
+    <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
+      <PanelGroup orientation="horizontal">
+        <Panel defaultSize={50} minSize={20}>
+          {editorColumn}
+        </Panel>
+        <PanelResizeHandle className="group w-2 shrink-0 relative hover:bg-primary/10 active:bg-primary/25 transition-all duration-200 cursor-col-resize flex items-center justify-center">
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/30 transition-colors" />
+          <div className="z-10 w-1 h-8 bg-muted-foreground/20 rounded-full group-hover:bg-primary/50 group-hover:scale-x-125 transition-all" />
+        </PanelResizeHandle>
+        <Panel defaultSize={50} minSize={20}>
+          {outputColumn}
+        </Panel>
+      </PanelGroup>
+    </div>
+  );
+}
 
 // ─── Playground UI ────────────────────────────────────────────────────────
 
@@ -652,7 +1071,7 @@ function PlaygroundContent({ language }: { language: string }) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       if (!codeFromUrl) codeFromUrl = hashParams.get("code") || hashParams.get("c");
       if (!embedVal) embedVal = hashParams.get("embed") || "";
-      if (!eShort) eShort = hashParams.get("e") || "";
+      if (!eShort) hashParams.get("e") || "";
     }
 
     const finalEmbed = embedVal || eShort;
@@ -718,6 +1137,8 @@ function PlaygroundContent({ language }: { language: string }) {
         setOutput("Compiling TypeScript...\n");
       } else if (langKey === "sql") {
         setOutput("Initializing SQLite WebAssembly...\n");
+      } else if (langKey === "lua") {
+        setOutput("Loading Lua runtime...\n");
       } else if (!LANGUAGES[langKey]?.clientSide) {
         setOutput("Connecting to compiler...\n");
       } else {
@@ -765,6 +1186,23 @@ function PlaygroundContent({ language }: { language: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleClearOutput = () => {
+    setOutput("");
+    setStatus("idle");
+  };
+
+  const handleCtrlC = () => {
+    setInteractiveMode(false);
+    setStatus("error");
+    setOutput(prev => prev + "^C\n");
+  };
+
+  const handleKill = () => {
+    setInteractiveMode(false);
+    setStatus("error");
+    setOutput(prev => prev + "\n[Terminated]");
+  };
+
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
 
   const handleCopyShareLink = () => {
@@ -775,7 +1213,7 @@ function PlaygroundContent({ language }: { language: string }) {
         })
       );
       const shareUrl = `${window.location.origin}${window.location.pathname}#code=${encodeURIComponent(encoded)}&run=true`;
-      
+
       navigator.clipboard.writeText(shareUrl);
       setShareLinkCopied(true);
       setTimeout(() => setShareLinkCopied(false), 2000);
@@ -796,6 +1234,8 @@ function PlaygroundContent({ language }: { language: string }) {
         runRes = await runTypeScript(activeCode, stdinStr);
       } else if (langKey === "sql") {
         runRes = await runSQLAsync(activeCode);
+      } else if (langKey === "lua") {
+        runRes = await runLua(activeCode);
       } else {
         // Server-side: python, c, cpp, java, rust, go, ruby, php
         runRes = await runServer(activeCode, langKey, stdinStr);
@@ -871,6 +1311,8 @@ function PlaygroundContent({ language }: { language: string }) {
       setOutput("Compiling TypeScript...\n");
     } else if (langKey === "sql") {
       setOutput("Initializing SQLite WebAssembly...\n");
+    } else if (langKey === "lua") {
+      setOutput("Loading Lua runtime...\n");
     } else if (!LANGUAGES[langKey]?.clientSide) {
       setOutput("Connecting to compiler...\n");
     } else {
@@ -1092,9 +1534,9 @@ function PlaygroundContent({ language }: { language: string }) {
                 >
                   Enable Word Wrap
                 </DropdownMenuCheckboxItem>
-                
+
                 <DropdownMenuSeparator className="bg-border/60" />
-                
+
                 <DropdownMenuItem
                   onClick={handleReset}
                   className="text-xs py-2 text-rose-500 focus:text-rose-500 cursor-pointer"
@@ -1143,443 +1585,33 @@ function PlaygroundContent({ language }: { language: string }) {
       )}
 
         {/* ── Editor + Output split ───────────────────────────────────── */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
-          {!mounted ? (
-            <>
-              {/* Code Editor */}
-              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-                  <span style={{ color: langConfig.brandColor }}>◆</span>
-                  <span className="ml-1.5">{langConfig.filename}</span>
-                </div>
-                <div className="flex-1 overflow-hidden p-0">
-                  <SyntaxHighlighter
-                    code={code}
-                    language={langKey}
-                    onChange={saveCode}
-                    fontSize={editorSettings.fontSize}
-                    lineNumbers={editorSettings.lineNumbers}
-                    wordWrap={editorSettings.wordWrap}
-                    theme={theme}
-                    className="h-full rounded-none border-0"
-                  />
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="hidden md:block w-px shrink-0 bg-border" />
-
-              {/* Output Terminal */}
-              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                {/* Output header */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                      Output
-                    </span>
-                    {status === "running" && (
-                      <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
-                        Running
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {interactiveMode && (
-                      <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                        Waiting for input
-                      </span>
-                    )}
-                    <button
-                      onClick={handleCopyOutput}
-                      disabled={!output || status === "running"}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                      title="Copy output"
-                    >
-                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => { setOutput(""); setStatus("idle"); }}
-                      disabled={!output}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                      title="Clear output"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Output / Interactive Terminal */}
-                <div
-                  className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
-                  style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
-                  onClick={() => interactiveInputRef.current?.focus()}
-                >
-                  {!output && !interactiveMode ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
-                      <Terminal className="h-8 w-8" />
-                      <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
-                    </div>
-                  ) : (
-                    <div
-                      className={
-                        status === "error" && !interactiveMode
-                          ? "text-rose-500 dark:text-rose-400"
-                          : "text-foreground"
-                      }
-                      style={{ whiteSpace: "pre-wrap" }}
-                    >
-                      {output}
-                      {interactiveMode && (
-                        <span style={{ whiteSpace: "pre" }}>
-                          <input
-                            ref={interactiveInputRef}
-                            type="text"
-                            value={interactiveInput}
-                            onChange={e => setInteractiveInput(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
-                              if (e.key === "c" && e.ctrlKey) {
-                                setInteractiveMode(false);
-                                setStatus("error");
-                                setOutput(prev => prev + "^C\n");
-                              }
-                            }}
-                            spellCheck={false}
-                            autoComplete="off"
-                            autoCorrect="off"
-                            className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
-                            style={{
-                              width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
-                              minWidth: "2ch",
-                            }}
-                          />
-                          <span
-                            className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
-                            style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
-                          />
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <div ref={outputEndRef} />
-                </div>
-
-                {interactiveMode && (
-                  <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="text-[10px] font-semibold text-emerald-500">
-                      Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
-                    </span>
-                    <button
-                      onClick={() => {
-                        setInteractiveMode(false);
-                        setStatus("error");
-                        setOutput(prev => prev + "\n[Terminated]");
-                      }}
-                      className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
-                    >
-                      Kill
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : isMobileView ? (
-            <>
-              {/* Code Editor */}
-              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden"}`}>
-                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-                  <span style={{ color: langConfig.brandColor }}>◆</span>
-                  <span className="ml-1.5">{langConfig.filename}</span>
-                </div>
-                <div className="flex-1 overflow-hidden p-0">
-                  <SyntaxHighlighter
-                    code={code}
-                    language={langKey}
-                    onChange={saveCode}
-                    fontSize={editorSettings.fontSize}
-                    lineNumbers={editorSettings.lineNumbers}
-                    wordWrap={editorSettings.wordWrap}
-                    theme={theme}
-                    className="h-full rounded-none border-0"
-                  />
-                </div>
-              </div>
-
-              {/* Output Terminal */}
-              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "output" ? "flex" : "hidden"}`}>
-                {/* Output header */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                      Output
-                    </span>
-                    {status === "running" && (
-                      <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
-                        Running
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {interactiveMode && (
-                      <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                        Waiting for input
-                      </span>
-                    )}
-                    <button
-                      onClick={handleCopyOutput}
-                      disabled={!output || status === "running"}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                      title="Copy output"
-                    >
-                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => { setOutput(""); setStatus("idle"); }}
-                      disabled={!output}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                      title="Clear output"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Output / Interactive Terminal */}
-                <div
-                  className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
-                  style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
-                  onClick={() => interactiveInputRef.current?.focus()}
-                >
-                  {!output && !interactiveMode ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
-                      <Terminal className="h-8 w-8" />
-                      <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
-                    </div>
-                  ) : (
-                    <div
-                      className={
-                        status === "error" && !interactiveMode
-                          ? "text-rose-500 dark:text-rose-400"
-                          : "text-foreground"
-                      }
-                      style={{ whiteSpace: "pre-wrap" }}
-                    >
-                      {output}
-                      {interactiveMode && (
-                        <span style={{ whiteSpace: "pre" }}>
-                          <input
-                            ref={interactiveInputRef}
-                            type="text"
-                            value={interactiveInput}
-                            onChange={e => setInteractiveInput(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
-                              if (e.key === "c" && e.ctrlKey) {
-                                setInteractiveMode(false);
-                                setStatus("error");
-                                setOutput(prev => prev + "^C\n");
-                              }
-                            }}
-                            spellCheck={false}
-                            autoComplete="off"
-                            autoCorrect="off"
-                            className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
-                            style={{
-                              width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
-                              minWidth: "2ch",
-                            }}
-                          />
-                          <span
-                            className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
-                            style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
-                          />
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <div ref={outputEndRef} />
-                </div>
-
-                {interactiveMode && (
-                  <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="text-[10px] font-semibold text-emerald-500">
-                      Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
-                    </span>
-                    <button
-                      onClick={() => {
-                        setInteractiveMode(false);
-                        setStatus("error");
-                        setOutput(prev => prev + "\n[Terminated]");
-                      }}
-                      className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
-                    >
-                      Kill
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <PanelGroup orientation="horizontal">
-              <Panel defaultSize={50} minSize={20}>
-                {/* Code Editor */}
-                <div className="h-full flex flex-col overflow-hidden min-w-0">
-                  <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-                    <span style={{ color: langConfig.brandColor }}>◆</span>
-                    <span className="ml-1.5">{langConfig.filename}</span>
-                  </div>
-                  <div className="flex-1 overflow-hidden p-0">
-                    <SyntaxHighlighter
-                      code={code}
-                      language={langKey}
-                      onChange={saveCode}
-                      fontSize={editorSettings.fontSize}
-                      lineNumbers={editorSettings.lineNumbers}
-                      wordWrap={editorSettings.wordWrap}
-                      theme={theme}
-                      className="h-full rounded-none border-0"
-                    />
-                  </div>
-                </div>
-              </Panel>
-
-              <PanelResizeHandle className="group w-2 shrink-0 relative hover:bg-primary/10 active:bg-primary/25 transition-all duration-200 cursor-col-resize flex items-center justify-center">
-                {/* Visual divider line */}
-                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/30 transition-colors" />
-                {/* Centered drag handle pill */}
-                <div className="z-10 w-1 h-8 bg-muted-foreground/20 rounded-full group-hover:bg-primary/50 group-hover:scale-x-125 transition-all" />
-              </PanelResizeHandle>
-
-              <Panel defaultSize={50} minSize={20}>
-                {/* Output Terminal */}
-                <div className="h-full flex flex-col overflow-hidden min-w-0">
-                  {/* Output header */}
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                        Output
-                      </span>
-                      {status === "running" && (
-                        <span className="flex items-center gap-1 ml-1 text-[10px] text-indigo-400 font-semibold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block" />
-                          Running
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {interactiveMode && (
-                        <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold animate-pulse mr-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                          Waiting for input
-                        </span>
-                      )}
-                      <button
-                        onClick={handleCopyOutput}
-                        disabled={!output || status === "running"}
-                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                        title="Copy output"
-                      >
-                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                      </button>
-                      <button
-                        onClick={() => { setOutput(""); setStatus("idle"); }}
-                        disabled={!output}
-                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                        title="Clear output"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Output / Interactive Terminal */}
-                  <div
-                    className="flex-1 overflow-auto p-5 font-mono text-sm leading-relaxed cursor-text bg-background text-foreground"
-                    style={{ fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", wordBreak: "break-word" }}
-                    onClick={() => interactiveInputRef.current?.focus()}
-                  >
-                    {!output && !interactiveMode ? (
-                      <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30 select-none">
-                        <Terminal className="h-8 w-8" />
-                        <p className="text-xs">Press <kbd className="bg-accent px-1.5 py-0.5 rounded text-[10px] font-sans">Ctrl+Enter</kbd> to run</p>
-                      </div>
-                    ) : (
-                      <div
-                        className={
-                          status === "error" && !interactiveMode
-                            ? "text-rose-500 dark:text-rose-400"
-                            : "text-foreground"
-                        }
-                        style={{ whiteSpace: "pre-wrap" }}
-                      >
-                        {output}
-                        {interactiveMode && (
-                          <span style={{ whiteSpace: "pre" }}>
-                            <input
-                              ref={interactiveInputRef}
-                              type="text"
-                              value={interactiveInput}
-                              onChange={e => setInteractiveInput(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === "Enter") { e.preventDefault(); handleSubmitInput(); }
-                                if (e.key === "c" && e.ctrlKey) {
-                                  setInteractiveMode(false);
-                                  setStatus("error");
-                                  setOutput(prev => prev + "^C\n");
-                                }
-                              }}
-                              spellCheck={false}
-                              autoComplete="off"
-                              autoCorrect="off"
-                              className="bg-transparent border-none outline-none font-mono text-sm text-emerald-500 dark:text-emerald-400 caret-emerald-500 dark:caret-emerald-400"
-                              style={{
-                                width: `${Math.max((interactiveInput.length + 2) * 0.6, 1)}em`,
-                                minWidth: "2ch",
-                              }}
-                            />
-                            <span
-                              className="inline-block w-[0.55em] h-[1em] align-middle animate-pulse bg-emerald-500 dark:bg-emerald-400"
-                              style={{ marginLeft: "-2px", verticalAlign: "text-bottom" }}
-                            />
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <div ref={outputEndRef} />
-                  </div>
-
-                  {interactiveMode && (
-                    <div className="border-t border-emerald-500/20 bg-emerald-500/5 px-4 py-2 flex items-center gap-2 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                      <span className="text-[10px] font-semibold text-emerald-500">
-                        Waiting for input — type above and press <kbd className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Enter</kbd>
-                      </span>
-                      <button
-                        onClick={() => {
-                          setInteractiveMode(false);
-                          setStatus("error");
-                          setOutput(prev => prev + "\n[Terminated]");
-                        }}
-                        className="ml-auto text-[10px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
-                      >
-                        Kill
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </Panel>
-            </PanelGroup>
-          )}
-        </div>
+        <Workspace
+          langKey={langKey}
+          langConfig={langConfig}
+          mounted={mounted}
+          isMobileView={isMobileView}
+          code={code}
+          output={output}
+          status={status}
+          interactiveMode={interactiveMode}
+          interactiveInput={interactiveInput}
+          setInteractiveInput={setInteractiveInput}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          copied={copied}
+          handleCopyOutput={handleCopyOutput}
+          handleClearOutput={handleClearOutput}
+          handleSubmitInput={handleSubmitInput}
+          handleCtrlC={handleCtrlC}
+          handleKill={handleKill}
+          saveCode={saveCode}
+          interactiveInputRef={interactiveInputRef}
+          outputEndRef={outputEndRef}
+          theme={theme}
+          fontSize={editorSettings.fontSize}
+          lineNumbers={editorSettings.lineNumbers}
+          wordWrap={editorSettings.wordWrap}
+        />
       </main>
 
       <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>

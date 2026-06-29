@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import SidebarNav from "@/components/sidebar-nav";
-import { SettingsProvider, useSettings } from "@/contexts/settings-context";
+import { useSettings } from "@/contexts/settings-context";
 import SyntaxHighlighter from "@/components/syntax-highlighter";
 import {
   Globe,
@@ -106,6 +106,215 @@ const LANGUAGES = [
   { id: "sql", name: "SQL (SQLite)", color: "text-[#00758F]", bgAccent: "bg-[#00758F]/10 border-[#00758F]/20" },
 ];
 
+const fileLabel = { html: "index.html", css: "style.css", js: "script.js" };
+const fileDot   = { html: "text-orange-400", css: "text-blue-400", js: "text-yellow-400" };
+
+// ─── Workspace component (the editor + preview body) ────────────────────────
+// One component, three layouts: SSR placeholder / mobile tabs / desktop split.
+// Replaces what was previously three near-identical render trees inline.
+
+interface WebSandboxWorkspaceProps {
+  mounted: boolean;
+  isMobileView: boolean;
+  activeFile: ActiveFile;
+  setActiveFile: (f: ActiveFile) => void;
+  activeTab: "editor" | "preview";
+  setActiveTab: (t: "editor" | "preview") => void;
+  getCode: () => string;
+  handleChange: (val: string) => void;
+  preview: string;
+  previewVersion: number;
+  logs: LogEntry[];
+  consoleOpen: boolean;
+  setConsoleOpen: (open: boolean) => void;
+  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
+  theme: string;
+  fontSize: number;
+  lineNumbers: boolean;
+  wordWrap: boolean;
+}
+
+function WebSandboxWorkspace({
+  mounted,
+  isMobileView,
+  activeFile,
+  setActiveFile,
+  activeTab,
+  setActiveTab,
+  getCode,
+  handleChange,
+  preview,
+  previewVersion,
+  logs,
+  consoleOpen,
+  setConsoleOpen,
+  setLogs,
+  theme,
+  fontSize,
+  lineNumbers,
+  wordWrap,
+}: WebSandboxWorkspaceProps) {
+
+  // Editor column — used by all three layouts.
+  const editorColumn = (
+    <div className="h-full flex flex-col overflow-hidden min-w-0">
+      {/* Mobile file tabs — only render on mobile, otherwise use the sidebar file list */}
+      {isMobileView && (
+        <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-background border-border">
+          {(["html", "css", "js"] as ActiveFile[]).map(ft => (
+            <button
+              key={ft}
+              onClick={() => setActiveFile(ft)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold border transition-all ${
+                activeFile === ft
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-transparent text-muted-foreground border-border"
+              }`}
+            >
+              <FileCode className="h-3.5 w-3.5" />
+              <span>{fileLabel[ft]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
+        <span className={fileDot[activeFile]}>◆</span>
+        <span className="ml-1.5">{fileLabel[activeFile]}</span>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <SyntaxHighlighter
+          key={activeFile}
+          code={getCode()}
+          language={activeFile === "js" ? "javascript" : activeFile}
+          onChange={handleChange}
+          fontSize={fontSize}
+          lineNumbers={lineNumbers}
+          wordWrap={wordWrap}
+          theme={theme}
+          className="h-full rounded-none border-0"
+        />
+      </div>
+    </div>
+  );
+
+  // Preview column — same markup across all three layouts.
+  const previewColumn = (
+    <div className="h-full flex flex-col overflow-hidden min-w-0 relative">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
+        <div className="flex items-center gap-1.5">
+          <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
+        </div>
+        <button
+          onClick={() => setConsoleOpen(!consoleOpen)}
+          className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <Terminal className="h-3 w-3 text-orange-400" />
+          <span>Console ({logs.length})</span>
+          {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+        </button>
+      </div>
+
+      <div className="flex-1 relative overflow-hidden">
+        <iframe
+          key={previewVersion}
+          srcDoc={preview}
+          title="Web Preview"
+          sandbox="allow-scripts"
+          className="absolute inset-0 w-full h-full border-0 bg-white"
+        />
+      </div>
+
+      {consoleOpen && (
+        <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Terminal className="h-3 w-3 text-orange-400" />
+              Console Output
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setLogs([])}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="Clear logs"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => setConsoleOpen(false)}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
+            {logs.length === 0 ? (
+              <div className="text-muted-foreground text-center py-4">No console output yet</div>
+            ) : (
+              logs.map((log, i) => (
+                <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
+                  log.type === "error"
+                    ? "text-rose-500 bg-rose-500/5"
+                    : log.type === "warn"
+                    ? "text-amber-500 bg-amber-500/5"
+                    : "text-sky-500 dark:text-sky-300"
+                }`}>
+                  <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
+                  <span className="whitespace-pre-wrap break-all">{log.msg}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Layout 1: SSR / pre-hydration
+  if (!mounted) {
+    return (
+      <div className="flex-1 flex overflow-hidden bg-background">
+        <div className="flex-1 flex-col overflow-hidden min-w-0">{editorColumn}</div>
+        <div className="hidden md:block w-px shrink-0 bg-border" />
+        <div className="flex-1 flex-col overflow-hidden min-w-0">{previewColumn}</div>
+      </div>
+    );
+  }
+
+  // Layout 2: mobile
+  if (isMobileView) {
+    return (
+      <div className="flex-1 flex overflow-hidden bg-background">
+        <div className={`flex-1 flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden"}`}>
+          {editorColumn}
+        </div>
+        <div className={`flex-1 flex-col overflow-hidden min-w-0 ${activeTab === "preview" ? "flex" : "hidden"}`}>
+          {previewColumn}
+        </div>
+      </div>
+    );
+  }
+
+  // Layout 3: desktop resizable split
+  return (
+    <div className="flex-1 flex overflow-hidden bg-background">
+      <PanelGroup orientation="horizontal">
+        <Panel defaultSize={50} minSize={20}>
+          {editorColumn}
+        </Panel>
+        <PanelResizeHandle className="group w-2 shrink-0 relative hover:bg-primary/10 active:bg-primary/25 transition-all duration-200 cursor-col-resize flex items-center justify-center">
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/30 transition-colors" />
+          <div className="z-10 w-1 h-8 bg-muted-foreground/20 rounded-full group-hover:bg-primary/50 group-hover:scale-x-125 transition-all" />
+        </PanelResizeHandle>
+        <Panel defaultSize={50} minSize={20}>
+          {previewColumn}
+        </Panel>
+      </PanelGroup>
+    </div>
+  );
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 function HtmlSandboxContent() {
@@ -129,8 +338,6 @@ function HtmlSandboxContent() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isEmbedded, setIsEmbedded]             = useState(false);
   const [hideHeader, setHideHeader]             = useState(false);
-
-  const isDark = theme === "dark";
 
   // Load from localStorage & URL parameters
   useEffect(() => {
@@ -210,39 +417,7 @@ function HtmlSandboxContent() {
       localStorage.setItem("sandbox-js", finalJs);
     }
 
-    // Initial build preview using loaded values directly to bypass state update lag
-    const consoleBridge = `<script>
-(function(){
-  ['log','warn','error'].forEach(function(t){
-    var orig = console[t];
-    console[t] = function(){
-      var msg = Array.from(arguments).map(function(a){
-        return typeof a === 'object' ? JSON.stringify(a) : String(a);
-      }).join(' ');
-      parent.postMessage({type:'__SANDBOX_LOG__',logType:t,message:msg},'*');
-      orig.apply(console,arguments);
-    };
-  });
-  window.addEventListener('error',function(e){
-    parent.postMessage({type:'__SANDBOX_LOG__',logType:'error',message:e.message},'*');
-  });
-})();
-</script>`;
-
-    let doc = finalHtml;
-    const style = `<style>\n${finalCss}\n</style>`;
-    const script = `<script>\n${finalJs}\n</script>`;
-
-    if (doc.includes("</head>")) {
-      doc = doc.replace("</head>", `${consoleBridge}\n${style}\n</head>`);
-    } else {
-      doc = consoleBridge + "\n" + style + "\n" + doc;
-    }
-    if (doc.includes("</body>")) {
-      doc = doc.replace("</body>", `${script}\n</body>`);
-    } else {
-      doc = doc + "\n" + script;
-    }
+    const doc = buildPreviewDocument(finalHtml, finalCss, finalJs);
     setPreview(doc);
     setPreviewVersion((v) => v + 1);
 
@@ -256,7 +431,8 @@ function HtmlSandboxContent() {
     }
   }, []);
 
-  const buildPreview = useCallback((shouldClearLogs = false) => {
+  // Build the iframe source from the three code strings (style + script + console bridge injection)
+  const buildPreviewDocument = useCallback((htmlStr: string, cssStr: string, jsStr: string): string => {
     const consoleBridge = `<script>
 (function(){
   ['log','warn','error'].forEach(function(t){
@@ -275,28 +451,28 @@ function HtmlSandboxContent() {
 })();
 </script>`;
 
-    let doc = html;
-    const style = `<style>\n${css}\n</style>`;
-    const script = `<script>\n${js}\n</script>`;
+    let doc = htmlStr;
+    const style = `<style>\n${cssStr}\n</style>`;
+    const script = `<script>\n${jsStr}\n</script>`;
 
-    // Inject console bridge + styles into <head>
     if (doc.includes("</head>")) {
       doc = doc.replace("</head>", `${consoleBridge}\n${style}\n</head>`);
     } else {
       doc = consoleBridge + "\n" + style + "\n" + doc;
     }
-    // Inject user JS before </body>
     if (doc.includes("</body>")) {
       doc = doc.replace("</body>", `${script}\n</body>`);
     } else {
       doc = doc + "\n" + script;
     }
-    setPreview(doc);
-    if (shouldClearLogs) {
-      setLogs([]);
-    }
+    return doc;
+  }, []);
+
+  const buildPreview = useCallback((shouldClearLogs = false) => {
+    setPreview(buildPreviewDocument(html, css, js));
+    if (shouldClearLogs) setLogs([]);
     setPreviewVersion(v => v + 1);
-  }, [html, css, js]);
+  }, [html, css, js, buildPreviewDocument]);
 
   // Automatically build preview when html, css, or js changes (debounced)
   useEffect(() => {
@@ -320,13 +496,16 @@ function HtmlSandboxContent() {
     return () => window.removeEventListener("message", handler);
   }, []);
 
-  const getCode = () => activeFile === "html" ? html : activeFile === "css" ? css : js;
+  const getCode = useCallback(
+    () => (activeFile === "html" ? html : activeFile === "css" ? css : js),
+    [activeFile, html, css, js]
+  );
 
-  const handleChange = (val: string) => {
+  const handleChange = useCallback((val: string) => {
     if (activeFile === "html") { setHtml(val); localStorage.setItem("sandbox-html", val); }
     else if (activeFile === "css") { setCss(val); localStorage.setItem("sandbox-css", val); }
     else { setJs(val); localStorage.setItem("sandbox-js", val); }
-  };
+  }, [activeFile]);
 
   const handleReset = () => {
     setIsResetConfirmOpen(true);
@@ -362,13 +541,13 @@ function HtmlSandboxContent() {
           })
         );
       };
-      
+
       const encodedHtml = encodeURIComponent(encodeBase64(html));
       const encodedCss = encodeURIComponent(encodeBase64(css));
       const encodedJs = encodeURIComponent(encodeBase64(js));
-      
+
       const shareUrl = `${window.location.origin}${window.location.pathname}#html=${encodedHtml}&css=${encodedCss}&js=${encodedJs}&run=true`;
-      
+
       navigator.clipboard.writeText(shareUrl);
       setShareLinkCopied(true);
       setTimeout(() => setShareLinkCopied(false), 2000);
@@ -376,9 +555,6 @@ function HtmlSandboxContent() {
       console.error("Failed to copy share link:", e);
     }
   };
-
-  const fileLabel = { html: "index.html", css: "style.css", js: "script.js" };
-  const fileDot   = { html: "text-orange-400", css: "text-blue-400", js: "text-yellow-400" };
 
   return (
     <div className="flex w-full max-w-full overflow-x-hidden min-h-screen bg-background text-foreground transition-colors duration-200">
@@ -414,7 +590,6 @@ function HtmlSandboxContent() {
 
               {isLangDropdownOpen && (
                 <>
-                  {/* Backdrop to close the dropdown when clicking outside */}
                   <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
                   <div className="absolute left-0 mt-2 w-48 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg z-50 py-1.5 overflow-hidden">
                     <div className="px-3 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border/40 mb-1">
@@ -534,9 +709,9 @@ function HtmlSandboxContent() {
                 >
                   Enable Word Wrap
                 </DropdownMenuCheckboxItem>
-                
+
                 <DropdownMenuSeparator className="bg-border/60" />
-                
+
                 <DropdownMenuItem
                   onClick={handleReset}
                   className="text-xs py-2 text-rose-500 focus:text-rose-500 cursor-pointer"
@@ -602,333 +777,26 @@ function HtmlSandboxContent() {
             ))}
           </div>
 
-          {/* Code editor */}
-          {!mounted ? (
-            <>
-              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-                  <span className={fileDot[activeFile]}>◆</span>
-                  <span className="ml-1.5">{fileLabel[activeFile]}</span>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <SyntaxHighlighter
-                    key={activeFile}
-                    code={getCode()}
-                    language={activeFile === "js" ? "javascript" : activeFile}
-                    onChange={handleChange}
-                    fontSize={editorSettings.fontSize}
-                    lineNumbers={editorSettings.lineNumbers}
-                    wordWrap={editorSettings.wordWrap}
-                    theme={theme}
-                    className="h-full rounded-none border-0"
-                  />
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="hidden md:block w-px shrink-0 bg-border" />
-
-              {/* Preview panel */}
-              <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
-                  </div>
-                  {/* Console toggle */}
-                  <button
-                    onClick={() => setConsoleOpen(o => !o)}
-                    className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  >
-                    <Terminal className="h-3 w-3 text-orange-400" />
-                    <span>Console ({logs.length})</span>
-                    {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-                  </button>
-                </div>
-
-                {/* iframe */}
-                <div className="flex-1 relative overflow-hidden">
-                  <iframe
-                    key={previewVersion}
-                    srcDoc={preview}
-                    title="Web Preview"
-                    sandbox="allow-scripts"
-                    className="absolute inset-0 w-full h-full border-0 bg-white"
-                  />
-                </div>
-
-                {/* Console drawer */}
-                {consoleOpen && (
-                  <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Terminal className="h-3 w-3 text-orange-400" />
-                        Console Output
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setLogs([])}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          title="Clear logs"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => setConsoleOpen(false)}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
-                      {logs.length === 0 ? (
-                        <div className="text-muted-foreground text-center py-4">No console output yet</div>
-                      ) : (
-                        logs.map((log, i) => (
-                          <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
-                            log.type === "error"
-                              ? "text-rose-500 bg-rose-500/5"
-                              : log.type === "warn"
-                              ? "text-amber-500 bg-amber-500/5"
-                              : "text-sky-500 dark:text-sky-300"
-                          }`}>
-                            <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
-                            <span className="whitespace-pre-wrap break-all">{log.msg}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : isMobileView ? (
-            <>
-              {/* Code editor */}
-              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${activeTab === "editor" ? "flex" : "hidden"}`}>
-                {/* Horizontal File Tabs for Mobile */}
-                <div className="flex md:hidden items-center gap-1.5 p-2 border-b shrink-0 bg-background border-border">
-                  {(["html", "css", "js"] as ActiveFile[]).map(ft => (
-                    <button
-                      key={ft}
-                      onClick={() => setActiveFile(ft)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold border transition-all ${
-                        activeFile === ft
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-transparent text-muted-foreground border-border"
-                      }`}
-                    >
-                      <FileCode className="h-3.5 w-3.5" />
-                      <span>{fileLabel[ft]}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-                  <span className={fileDot[activeFile]}>◆</span>
-                  <span className="ml-1.5">{fileLabel[activeFile]}</span>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <SyntaxHighlighter
-                    key={activeFile}
-                    code={getCode()}
-                    language={activeFile === "js" ? "javascript" : activeFile}
-                    onChange={handleChange}
-                    fontSize={editorSettings.fontSize}
-                    lineNumbers={editorSettings.lineNumbers}
-                    wordWrap={editorSettings.wordWrap}
-                    theme={theme}
-                    className="h-full rounded-none border-0"
-                  />
-                </div>
-              </div>
-
-              {/* Preview panel */}
-              <div className={`flex-1 flex flex-col overflow-hidden min-w-0 relative ${activeTab === "preview" ? "flex" : "hidden"}`}>
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
-                  </div>
-                  {/* Console toggle */}
-                  <button
-                    onClick={() => setConsoleOpen(o => !o)}
-                    className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  >
-                    <Terminal className="h-3 w-3 text-orange-400" />
-                    <span>Console ({logs.length})</span>
-                    {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-                  </button>
-                </div>
-
-                {/* iframe */}
-                <div className="flex-1 relative overflow-hidden">
-                  <iframe
-                    key={previewVersion}
-                    srcDoc={preview}
-                    title="Web Preview"
-                    sandbox="allow-scripts"
-                    className="absolute inset-0 w-full h-full border-0 bg-white"
-                  />
-                </div>
-
-                {/* Console drawer */}
-                {consoleOpen && (
-                  <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Terminal className="h-3 w-3 text-orange-400" />
-                        Console Output
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setLogs([])}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          title="Clear logs"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => setConsoleOpen(false)}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
-                      {logs.length === 0 ? (
-                        <div className="text-muted-foreground text-center py-4">No console output yet</div>
-                      ) : (
-                        logs.map((log, i) => (
-                          <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
-                            log.type === "error"
-                              ? "text-rose-500 bg-rose-500/5"
-                              : log.type === "warn"
-                              ? "text-amber-500 bg-amber-500/5"
-                              : "text-sky-500 dark:text-sky-300"
-                          }`}>
-                            <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
-                            <span className="whitespace-pre-wrap break-all">{log.msg}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <PanelGroup orientation="horizontal">
-              <Panel defaultSize={50} minSize={20}>
-                {/* Code editor */}
-                <div className="h-full flex flex-col overflow-hidden min-w-0">
-                  <div className="flex items-center px-4 py-2 text-[10px] font-mono border-b border-border/80 bg-background text-muted-foreground shrink-0 uppercase tracking-wider">
-                    <span className={fileDot[activeFile]}>◆</span>
-                    <span className="ml-1.5">{fileLabel[activeFile]}</span>
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <SyntaxHighlighter
-                      key={activeFile}
-                      code={getCode()}
-                      language={activeFile === "js" ? "javascript" : activeFile}
-                      onChange={handleChange}
-                      fontSize={editorSettings.fontSize}
-                      lineNumbers={editorSettings.lineNumbers}
-                      wordWrap={editorSettings.wordWrap}
-                      theme={theme}
-                      className="h-full rounded-none border-0"
-                    />
-                  </div>
-                </div>
-              </Panel>
-
-              <PanelResizeHandle className="group w-2 shrink-0 relative hover:bg-primary/10 active:bg-primary/25 transition-all duration-200 cursor-col-resize flex items-center justify-center">
-                {/* Visual divider line */}
-                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/30 transition-colors" />
-                {/* Centered drag handle pill */}
-                <div className="z-10 w-1 h-8 bg-muted-foreground/20 rounded-full group-hover:bg-primary/50 group-hover:scale-x-125 transition-all" />
-              </PanelResizeHandle>
-
-              <Panel defaultSize={50} minSize={20}>
-                {/* Preview panel */}
-                <div className="h-full flex flex-col overflow-hidden min-w-0 relative">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Preview</span>
-                    </div>
-                    {/* Console toggle */}
-                    <button
-                      onClick={() => setConsoleOpen(o => !o)}
-                      className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    >
-                      <Terminal className="h-3 w-3 text-orange-400" />
-                      <span>Console ({logs.length})</span>
-                      {consoleOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-                    </button>
-                  </div>
-
-                  {/* iframe */}
-                  <div className="flex-1 relative overflow-hidden">
-                    <iframe
-                      key={previewVersion}
-                      srcDoc={preview}
-                      title="Web Preview"
-                      sandbox="allow-scripts"
-                      className="absolute inset-0 w-full h-full border-0 bg-white"
-                    />
-                  </div>
-
-                  {/* Console drawer */}
-                  {consoleOpen && (
-                    <div className="border-t border-border h-48 flex flex-col shrink-0 bg-background">
-                      <div className="flex items-center justify-between px-3 py-2 border-b border-border/80 bg-background">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <Terminal className="h-3 w-3 text-orange-400" />
-                          Console Output
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setLogs([])}
-                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            title="Clear logs"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => setConsoleOpen(false)}
-                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          >
-                            <ChevronDown className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
-                        {logs.length === 0 ? (
-                          <div className="text-muted-foreground text-center py-4">No console output yet</div>
-                        ) : (
-                          logs.map((log, i) => (
-                            <div key={i} className={`flex gap-2 px-2 py-0.5 rounded ${
-                              log.type === "error"
-                                ? "text-rose-500 bg-rose-500/5"
-                                : log.type === "warn"
-                                ? "text-amber-500 bg-amber-500/5"
-                                : "text-sky-500 dark:text-sky-300"
-                            }`}>
-                              <span className="text-muted-foreground/60 shrink-0">[{log.time}]</span>
-                              <span className="whitespace-pre-wrap break-all">{log.msg}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Panel>
-            </PanelGroup>
-          )}
+          <WebSandboxWorkspace
+            mounted={mounted}
+            isMobileView={isMobileView}
+            activeFile={activeFile}
+            setActiveFile={setActiveFile}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            getCode={getCode}
+            handleChange={handleChange}
+            preview={preview}
+            previewVersion={previewVersion}
+            logs={logs}
+            consoleOpen={consoleOpen}
+            setConsoleOpen={setConsoleOpen}
+            setLogs={setLogs}
+            theme={theme}
+            fontSize={editorSettings.fontSize}
+            lineNumbers={editorSettings.lineNumbers}
+            wordWrap={editorSettings.wordWrap}
+          />
         </div>
       </main>
 
@@ -943,7 +811,7 @@ function HtmlSandboxContent() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-zinc-200 text-zinc-900 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800/80">
+            <AlertDialogCancel className="border-zinc-200 text-zinc-900 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-800/80">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

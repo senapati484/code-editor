@@ -14,6 +14,13 @@ const PAIZA_LANG: Record<string, { lang: string; filename: string }> = {
   go:     { lang: "go",     filename: "main.go" },
   ruby:   { lang: "ruby",   filename: "main.rb" },
   php:    { lang: "php",    filename: "main.php" },
+  swift:  { lang: "swift",  filename: "main.swift" },
+  kotlin: { lang: "kotlin", filename: "Main.kt" },
+  csharp: { lang: "csharp", filename: "Program.cs" },
+  r:      { lang: "r",      filename: "main.r" },
+  perl:   { lang: "perl",   filename: "main.pl" },
+  scala:  { lang: "scala",  filename: "Main.scala" },
+  haskell:{ lang: "haskell",filename: "main.hs" },
 };
 
 async function runWithPaiza(code: string, lang: string, stdin: string = "") {
@@ -196,6 +203,123 @@ function preprocessCode(code: string, lang: string): string {
         `  return n, err\n` +
         `}\n`;
       return out;
+    }
+
+    case "swift": {
+      // Wrap readLine() to exit on EOF — use FileHandle for cross-platform stderr
+      const helper =
+        `import Foundation\n` +
+        `func _o2_readLine() -> String {\n` +
+        `  guard let line = readLine() else {\n` +
+        `    FileHandle.standardError.write(Data("EOFError\\n".utf8))\n` +
+        `    exit(1)\n` +
+        `  }\n` +
+        `  return line\n` +
+        `}\n`;
+      return helper + code.replace(/\breadLine\s*\([^)]*\)/g, "_o2_readLine()");
+    }
+
+    case "kotlin": {
+      // Wrap readLine() and readln() to exit on EOF
+      const helper =
+        `import kotlin.system.exitProcess\n\n` +
+        `fun _o2_readLine(): String {\n` +
+        `  return readLine() ?: run {\n` +
+        `    System.err.println("EOFError")\n` +
+        `    exitProcess(1)\n` +
+        `    ""\n` +
+        `  }\n` +
+        `}\n` +
+        `fun _o2_readln(): String {\n` +
+        `  try {\n` +
+        `    return readln()\n` +
+        `  } catch (e: RuntimeException) {\n` +
+        `    System.err.println("EOFError")\n` +
+        `    exitProcess(1)\n` +
+        `    ""\n` +
+        `  }\n` +
+        `}\n`;
+      return helper + "\n" + code
+        .replace(/\breadLine\s*\(\)/g, "_o2_readLine()")
+        .replace(/\breadln\s*\(\)/g, "_o2_readln()");
+    }
+
+    case "csharp": {
+      // Hoist using directives to the top, insert helper after them
+      const usings = code.match(/^using\s+[^;]+;/gm) || [];
+      const rest = code.replace(/^using\s+[^;]+;\s*/gm, "");
+      const helper =
+        `static class _o2_Helpers {\n` +
+        `  public static string _o2_readline() {\n` +
+        `    string s = System.Console.ReadLine();\n` +
+        `    if (s == null) { System.Console.Error.WriteLine("EOFError"); System.Environment.Exit(1); }\n` +
+        `    return s;\n` +
+        `  }\n` +
+        `}\n`;
+      return usings.join("\n") + (usings.length ? "\n" : "") +
+        helper +
+        rest.replace(/(System\.)?Console\.ReadLine\s*\(\)/g, "_o2_Helpers._o2_readline()");
+    }
+
+    case "r": {
+      // Wrap readline() to exit on EOF
+      return (
+        `"_o2_readline" <- function(prompt = "") {\n` +
+        `  if (nchar(prompt)) cat(prompt)\n` +
+        `  x <- readLines("stdin", n = 1, warn = FALSE)\n` +
+        `  if (length(x) == 0) {\n` +
+        `    write("EOFError", stderr())\n` +
+        `    quit(save = "no")\n` +
+        `  }\n` +
+        `  x\n` +
+        `}\n` +
+        code.replace(/\breadline\s*\(/g, "\"_o2_readline\"(")
+      );
+    }
+
+    case "perl": {
+      // Wrap <> and <STDIN> to exit on undef — only replace standalone <>
+      const usesStdin = /<>\s*[;\n]/.test(code);
+      if (!usesStdin) return code;
+      return (
+        `sub _o2_readline {\n` +
+        `  my $line = shift // <STDIN>;\n` +
+        `  unless (defined $line) {\n` +
+        `    print STDERR "EOFError\\n";\n` +
+        `    exit(1);\n` +
+        `  }\n` +
+        `  return $line;\n` +
+        `}\n` +
+        code.replace(/<>\s*/g, "_o2_readline()")
+      );
+    }
+
+    case "scala": {
+      // Paiza.io requires the entry point to be named "Main" (like Java)
+      let out = code.replace(/\bobject\s+\w+\s+extends\s+(?:scala\.)?App/g, "object Main extends App");
+      // Inline replacement: expand StdIn.readLine() into a null-checking block
+      return out.replace(
+        /(?:scala\.io\.)?StdIn\.readLine\s*\(\)/g,
+        "{ val _o2_tmp = scala.io.StdIn.readLine(); if (_o2_tmp == null) { System.err.println(\"EOFError\"); sys.exit(1) }; _o2_tmp }"
+      );
+    }
+
+    case "haskell": {
+      // Wrap getLine to catch EOF and exit cleanly
+      return (
+        `import System.IO\n` +
+        `import System.Exit\n` +
+        `import Control.Exception\n\n` +
+        `_o2_getLine :: IO String\n` +
+        `_o2_getLine = do\n` +
+        `  result <- try getLine :: IO (Either IOException String)\n` +
+        `  case result of\n` +
+        `    Right line -> return line\n` +
+        `    Left _ -> do\n` +
+        `      hPutStrLn stderr "EOFError"\n` +
+        `      exitWith (ExitFailure 1)\n\n` +
+        code.replace(/\bgetLine\b/g, "_o2_getLine")
+      );
     }
 
     case "python":
